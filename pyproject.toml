@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nanotrace"
+version = "1.0.0"
+authors = [
+  { name="Matthijs Tadema", email="m.j.tadema@rug.nl" },
+]
+description = "Automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "Apache-2.0"
+license-files = ["LICEN[CS]E*"]
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "pyabf",
+    "pandas",
+    "anytree",
+    "scipy",
+    "scikit-learn",
+    "joblib",
+    "tqdm",
+    "numba",
+    "ipywidgets"
+]
+
+
+[project.urls]
+Homepage = "https://github.com/mjtadema/porepipe"
+Issues = "https://github.com/mjtadema/porepipe/issues"
