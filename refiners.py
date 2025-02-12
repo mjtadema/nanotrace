@@ -1,15 +1,15 @@
 import numpy as np
 from scipy import signal
-from scipy.signal import find_peaks
+from scipy.signal import find_peaks, resample
 from sklearn.mixture import GaussianMixture
+from dtw import dtw
 
-from .utils import baseline, smooth_pred
-from .decorators import partial, refiner
+from .utils import baseline, smooth_pred, normalize_thres
+from .decorators import partial, refiner, cutoff
 
 
-@partial
-@refiner
-def switch(t,y,threshold=5e3):
+@cutoff
+def switch(t,y):
     """
     Segment a raw trace based on manual voltage switch spikes
     """
@@ -22,45 +22,42 @@ def switch(t,y,threshold=5e3):
     bounds = np.sort(np.concatenate([[0], his, los, [len(y)-1]]))
 
     for s, e in zip(bounds[:-1], bounds[1:]):
-        if e-s > threshold:
-            yield t[s:e], y[s:e]
+        yield t[s:e], y[s:e]
 
 
 @partial
-@refiner
-def lowpass(t,y, *, cutoff, fs, order=10):
+@cutoff
+def lowpass(t,y, *, cutoff_fq, fs, order=10):
     """Wrap a lowpass butterworth filter"""
-    sos = signal.butter(order, cutoff, 'lowpass', fs=fs, output='sos')
+    sos = signal.butter(order, cutoff_fq, 'lowpass', fs=fs, output='sos')
     filt = signal.sosfilt(sos, y)
     assert len(filt) == len(t)
     yield t, filt
 
 
-
 @partial
-@refiner
+@cutoff
 def as_ires(t,y,minsamples=1000):
     yield t, y/baseline(y,minsamples)
 
 
 @partial
-@refiner
-def binned(t, y, *, lo=0, hi=1, nbins=5, threshold=10e3):
+@cutoff
+def binned(t, y, *, lo=0, hi=1, nbins=5):
     """yield segments as sequential bins"""
     bins = np.linspace(lo, hi, nbins)
     digi = np.digitize(y, bins)
     diff = np.diff(digi, append=0)
     bounds = np.arange(len(y))[(diff != 0)]
     for s, e in zip(bounds[:-1], bounds[1:]):
-        if e - s > threshold:
-            Y = y[s:e]
-            if lo < np.median(Y) < hi:
-                yield t[s:e], Y
+        Y = y[s:e]
+        if lo < np.median(Y) < hi:
+            yield t[s:e], Y
 
 
 @partial
-@refiner
-def threshold(t,y,*,lo,hi,mindt):
+@cutoff
+def threshold(t,y,*,lo,hi):
     """
     Segment into consecutive pieces between lo and hi
     """
@@ -69,12 +66,10 @@ def threshold(t,y,*,lo,hi,mindt):
     start = np.arange(len(diff))[diff == 1]
     end = np.arange(len(diff))[diff == -1]
     for s,e in zip(start,end):
-        if e-s > mindt:
-            yield t[s:e], y[s:e]
+        yield t[s:e], y[s:e]
 
 
 @partial
-@refiner
 def trim(t,y,*,left,right):
     left = int(left)
     right = int(right)
@@ -82,8 +77,8 @@ def trim(t,y,*,left,right):
 
 
 @partial
-@refiner
-def level(t, y, n, *, tol, minsamples=100, sortby='mean'):
+@cutoff
+def levels(t, y, *, n, tol=0, sortby='mean'):
     """
     Detect levels by fitting to a gaussian mixture model with n components.
     tol is a tolerance parameter between 0-1 that smoothens the prediction probabilities
@@ -111,6 +106,38 @@ def level(t, y, n, *, tol, minsamples=100, sortby='mean'):
     # padded[bounds+1] gives you the label of the segment _following_ the boundary
     padded = np.pad(pred, pad_width=(0, 2), mode='edge')
     for s, e, l in zip(bounds[:-1], bounds[1:], padded[bounds + 1]):
-        if e - s > minsamples:  # The -1 bound doesn't really work with very short segments
-            # l becomes a feature with function name as column name
-            yield t[s:e], y[s:e], l  # This is the way to smuggle out extra information without having access to the segment yet
+        # l becomes a feature with function name as column name
+        yield t[s:e], y[s:e], l  # This is the way to smuggle out extra information without having access to the segment yet
+
+
+@partial
+def at_shapelet(t, y, *, shapelet, include=True, mindist=5, n_resample=1000):
+    """
+    Try to resample, smoothen and normalize the data as cleanly as possible,
+    then find where the shapelet matches the best
+
+    start to give starting index, else ending index
+    mindist to consider the shapelet found, can be tuned
+    if not found don't yield anything
+    """
+    # resample the data
+    resampled = resample(y, n_resample)
+
+    norm = normalize_thres(resampled, threshold=50)
+
+    # Calculate DTW alignment to find the best fitting subsequence
+    aln = dtw(shapelet, norm, open_end=True, open_begin=True, step_pattern='asymmetric')
+    index = aln.index2
+
+    # Convert index back to original index
+    scl = len(y) / len(norm)
+    index = (index * scl).astype(int)
+
+    print(aln.distance)
+    print(index[0], index[-1])
+
+    if aln.distance < mindist:
+        if include:
+            yield t[index[0]:], y[index[0]:]
+        else:
+            yield t[index[-1]:], y[index[-1]:]
