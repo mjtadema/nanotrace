@@ -1,5 +1,7 @@
 from functools import wraps
 
+from anytree import PreOrderIter
+
 
 def partial(f):
     """Decorate a function so that the first call saves the arguments in a closure"""
@@ -29,3 +31,15 @@ def cutoff(f):
         else:
             return f(*args, **kwargs)
     return closure
+
+
+def requires_children(f):
+    """Used in root nodes to generate children before they are accessed"""
+    @wraps(f)
+    def wrapper(self, *args, **kwargs):
+        if not self.children:
+            # Generate the tree
+            for _ in PreOrderIter(self):
+                pass
+        return f(self, *args, **kwargs)
+    return wrapper
