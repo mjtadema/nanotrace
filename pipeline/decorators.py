@@ -14,17 +14,6 @@ def partial(f):
     return closure
 
 
-def tagged(tag):
-    """decorate a function with a tag"""
-    def decorator(f):
-        f.tag = tag
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            return f(*args, **kwargs)
-        return wrapper
-    return decorator
-
-
 def cutoff(f):
     """Filter out any segments shorter than the cutoff n samples"""
     @wraps(f)
@@ -39,10 +28,3 @@ def cutoff(f):
         else:
             return f(*args, **kwargs)
     return closure
-
-
-# Premake a couple tags
-refiner = tagged('refiner')
-extractor = tagged('extractor')
-condensor = tagged('condensor')
-pruner = tagged('pruner')
