@@ -25,6 +25,22 @@ def tagged(tag):
     return decorator
 
 
+def cutoff(f):
+    """Filter out any segments shorter than the cutoff n samples"""
+    @wraps(f)
+    def closure(*args, cutoff=0, **kwargs):
+        @wraps(f)
+        def with_cutoff(*args, **kwargs):
+            for t,y,*l in f(*args, **kwargs):
+                if len(t) > cutoff:
+                    yield t,y,*l
+        if cutoff > 0:
+            return with_cutoff(*args, **kwargs)
+        else:
+            return f(*args, **kwargs)
+    return closure
+
+
 # Premake a couple tags
 refiner = tagged('refiner')
 extractor = tagged('extractor')
