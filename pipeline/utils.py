@@ -1,7 +1,24 @@
 import numpy as np
 import pandas as pd
-from anytree import NodeMixin
-from scipy.signal import fftconvolve, resample
+from anytree import RenderTree
+from scipy.signal import fftconvolve
+
+from pathlib import Path
+from typing import Union
+
+from pyabf import ABF
+
+ABFLike = Union[ABF, str, Path]
+
+def as_abf(abf: ABFLike) -> ABF:
+    if not isinstance(abf, ABFLike):
+        raise TypeError(('Expected an AbfLike, not type', type(abf)))
+    if isinstance(abf, str):
+        abf = Path(abf)
+    if isinstance(abf, Path):
+        if not abf.exists(): raise FileNotFoundError(abf)
+        abf = ABF(abf)
+    return abf
 
 
 def polarity(y):
@@ -19,28 +36,6 @@ def baseline(y, minsamples):
     # to get rid of spikes
     i = np.arange(len(counts))[counts > minsamples][-1] + 1
     return np.median(y[digi == i])
-
-
-def normalize_thres(y, threshold=50):
-    # Smoothen to get rid of spikes
-    wlen = 10
-    kernel = np.full(wlen, 1 / wlen)
-    smooth = fftconvolve(y, kernel)
-
-    # Discretize the data to find bins with nsamples > threshold to use for normalization
-    disc = np.digitize(smooth, np.linspace(0, 1, 10))
-    ind, counts = np.unique(disc, return_counts=True)
-
-    # Find low and high bins
-    # find which datapoints are equal to the lowest and highest bins > mincount in one fell swoop
-    lo, hi = np.equal(disc[..., None], ind[counts > threshold][[0, -1]][None, ...]).T
-
-    # Normalize the smoothed data based on abundant bins
-    normmin = np.min(smooth[lo])
-    normmax = np.max(smooth[hi])
-
-    norm = (smooth - normmin) / (normmax - normmin)
-    return norm
 
 
 def smooth_pred(y, fit_, tol):
@@ -80,3 +75,25 @@ class PoolMixin:
             return pd.concat([child.features for child in self.children], ignore_index=True)
         else:
             return pd.DataFrame()
+
+class ReprMixin:
+    """
+    Add tree rendering
+    """
+    def __repr__(self):
+        """Fancy tree rendering"""
+        out = []
+        render = iter(RenderTree(self))
+        prev = None
+        for pre, _, node in render:
+            cnt = 0
+            while prev == pre:
+                # skip until we encounter next level
+                pre, _, node = next(render)
+                cnt += 1
+            else:
+                if cnt > 0:
+                    out.append("%s ... Skipped %d segments" % (prev, cnt))
+            out.append("%s%s" % (pre, str(node)))
+            prev = pre
+        return '\n'.join(out)
