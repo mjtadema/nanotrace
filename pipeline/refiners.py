@@ -1,11 +1,15 @@
+"""
+Functions to be used as refinement steps in a pipeline
+These must take time and current arrays as arguments
+and return (or yield) an iterator of "refined" time and current arrays
+"""
 import numpy as np
 from scipy import signal
-from scipy.signal import find_peaks, resample
+from scipy.signal import find_peaks
 from sklearn.mixture import GaussianMixture
-from dtw import dtw
 
-from .utils import baseline, smooth_pred, normalize_thres
-from .decorators import partial, refiner, cutoff
+from .utils import baseline, smooth_pred
+from .decorators import partial, cutoff
 
 
 @cutoff
@@ -38,6 +42,7 @@ def lowpass(t,y, *, cutoff_fq, fs, order=10):
 @partial
 @cutoff
 def as_ires(t,y,minsamples=1000):
+    """Calculate Ires using an automatic baseline calculation"""
     yield t, y/baseline(y,minsamples)
 
 
@@ -71,6 +76,7 @@ def threshold(t,y,*,lo,hi):
 
 @partial
 def trim(t,y,*,left,right):
+    """Trim off part of the segment"""
     left = int(left)
     right = int(right)
     yield t[left:-right], y[left:-right]
@@ -108,36 +114,3 @@ def levels(t, y, *, n, tol=0, sortby='mean'):
     for s, e, l in zip(bounds[:-1], bounds[1:], padded[bounds + 1]):
         # l becomes a feature with function name as column name
         yield t[s:e], y[s:e], l  # This is the way to smuggle out extra information without having access to the segment yet
-
-
-@partial
-def at_shapelet(t, y, *, shapelet, include=True, mindist=5, n_resample=1000):
-    """
-    Try to resample, smoothen and normalize the data as cleanly as possible,
-    then find where the shapelet matches the best
-
-    start to give starting index, else ending index
-    mindist to consider the shapelet found, can be tuned
-    if not found don't yield anything
-    """
-    # resample the data
-    resampled = resample(y, n_resample)
-
-    norm = normalize_thres(resampled, threshold=50)
-
-    # Calculate DTW alignment to find the best fitting subsequence
-    aln = dtw(shapelet, norm, open_end=True, open_begin=True, step_pattern='asymmetric')
-    index = aln.index2
-
-    # Convert index back to original index
-    scl = len(y) / len(norm)
-    index = (index * scl).astype(int)
-
-    print(aln.distance)
-    print(index[0], index[-1])
-
-    if aln.distance < mindist:
-        if include:
-            yield t[index[0]:], y[index[0]:]
-        else:
-            yield t[index[-1]:], y[index[-1]:]

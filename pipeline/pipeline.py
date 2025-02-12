@@ -1,96 +1,48 @@
+import logging
 from pathlib import Path
-import multiprocessing as mp
 
-import numpy as np
-import pandas as pd
-from anytree import PreOrderIter, LevelOrderGroupIter, NodeMixin
-from joblib import Parallel, delayed
-from pyabf import ABF
-from tqdm.auto import tqdm
+from .root import Root
+from .utils import ABFLike, as_abf
 
-from .utils import PoolMixin
-from .segment import Segment
+logger = logging.getLogger(__name__)
 
-################
-### PIPELINE ###
-################
-
-class AbfRoot(NodeMixin, PoolMixin):
-    """
-    Special segment that acts as the head of the pipeline
-    """
-    def __init__(self, pipeline, extractors=None, columns=None, abf=None, keep_steps=True):
-        self.abf = abf
-        self.t = []
-        self.y = []
-        self.sweeps = []
-        self.name = 'abf'
-        self._features = None
-        self.extractors = extractors
-        self.columns = columns
-        self.keep_steps = keep_steps
-        for i in range(self.abf.sweepCount):
-            self.abf.setSweep(i)
-            self.sweeps.append(Segment(self.abf.sweepX, self.abf.sweepY, [], pipeline, name='sweep', parent=self, keep_steps=True))
-
-    def __str__(self):
-        return "ABF from %s" % (self.abf.abfFilePath)
-
-    @property
-    def events(self):
-        return self.levels[-1]
-
-    @property
-    def features(self):
-        """
-        Pipeline root only pools features from sweeps
-        """
-        # Cache features
-        if self.extractors is None: return
-        if self._features is None:
-            # Optimization: calculate features for events in parallel ahead of time
-            features = []
-            cols = []
-            for extractor in self.extractors:
-                extracted = Parallel(n_jobs=4, backend='multiprocessing')(
-                    delayed(extractor)(event.t,event.y)
-                    for event in tqdm(self.events, desc="extracting features %s"%extractor.__name__)
-                )
-                extracted = np.array(extracted)
-                if len(extracted.shape) == 1:
-                    extracted = extracted[...,None]
-                features.append(extracted)
-                cols.extend([extractor.__name__+'_%d'%i for i in range(extracted.shape[-1])])
-            if not self.columns is None:
-                cols = self.columns
-            self._features = pd.DataFrame(np.hstack(features), columns=cols)
-        return self._features
-
-    @property
-    def levels(self):
-        """
-        returns a list of nodes grouped by level
-        conceptually as "stages" of the pipeline"
-        """
-        if not self.children:
-            # Generate the tree
-            for node in PreOrderIter(self):
-                pass
-        return list(LevelOrderGroupIter(self))
 
 class Pipeline:
-    """Pipeline factory with caching"""
+    """
+    Pipeline factory with caching
+    """
     def __init__(self, *pipeline, **kwargs):
-        self.name = 'root'
-        self.pipeline = pipeline
+        """
+        Pipeline constructor takes a list of functions that make up the pipeline that we refer to as "refiners".
+        These can be any callable, but they must take two arrays as arguments (time and current arrays)
+        and return an _iterable_ of time and current arrays.
+        Typically these are generators for simplicity.
+        Refiners that don't return anything can be used to filter out unwanted segments
+        Refiners that return an iterable with only one time and current array can be used to filter the data itself
+        See
+        :param pipeline:
+        :param kwargs:
+        """
         self._cache = {}
+        logger.debug("Constructing pipeline with %d steps: %s", len(pipeline), ",".join([f.__name__ for f in pipeline]))
+        self.pipeline = pipeline
         self.kwargs = kwargs
 
-    def __call__(self, abfpath: Path):
-        abfpath = Path(abfpath).absolute()
-        # Could even use the file hash perhaps...
-        if not abfpath in self._cache:
-            abf = ABF(abfpath)
-            self._cache[abfpath] = AbfRoot(self.pipeline, abf=abf, **self.kwargs)
-        return self._cache[abfpath]
+    def __str__(self):
+        return "Pipeline: %s with %d stages" % (self.__name__, len(self.pipeline))
 
+    def __call__(self, abf: ABFLike):
+        """
+        When called with an abf file, construct a segment tree from its data and cache it.
+        kwargs of the pipeline constructor are passed to the root of the tree
+        :param abf:
+        :return: Root
+        """
+        abf = as_abf(abf)
+        abfpath = Path(abf.abfFilePath)
+        if not abfpath.absolute() in self._cache:
+            logger.debug("Creating tree from %s", abfpath)
+            # Absolute file path is used as a key for caching, could use file hash
+            self._cache[abfpath] = Root(abf, self.pipeline, **self.kwargs)
+        logger.debug("Returning cached tree")
+        return self._cache[abfpath]
