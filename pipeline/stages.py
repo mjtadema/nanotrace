@@ -30,7 +30,6 @@ def switch(t,y):
 
 
 @partial
-@cutoff
 def lowpass(t,y, *, cutoff_fq, fs, order=10):
     """Wrap a lowpass butterworth filter"""
     sos = signal.butter(order, cutoff_fq, 'lowpass', fs=fs, output='sos')
@@ -40,7 +39,6 @@ def lowpass(t,y, *, cutoff_fq, fs, order=10):
 
 
 @partial
-@cutoff
 def as_ires(t,y,minsamples=1000):
     """Calculate Ires using an automatic baseline calculation"""
     yield t, y/baseline(y,minsamples)
@@ -75,7 +73,7 @@ def threshold(t,y,*,lo,hi):
 
 
 @partial
-def trim(t,y,*,left,right):
+def trim(t,y,*,left=0,right=1):
     """Trim off part of the segment"""
     left = int(left)
     right = int(right)
