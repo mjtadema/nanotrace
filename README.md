@@ -1,9 +1,3 @@
----
-title: Pipeline quickstart guide
-author: Matthijs Tadema
-date: Wed 12, March 2025
----
-
 # Pipeline
 
 `pipeline` is a python library for automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction.
