@@ -1,4 +1,11 @@
-# Pipeline quickstart guide
+---
+title: Pipeline quickstart guide
+author: Matthijs Tadema
+date: Wed 12, March 2025
+---
+
+# Pipeline
+
 `pipeline` is a python library for automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction.
 
 This guide will cover the following topics:
@@ -6,27 +13,26 @@ This guide will cover the following topics:
 ## Table of contents
 1. [Installation](#installation)
 2. [Usage example](#usage)
-3. Available stages
-4. [Design of the `Pipeline` class](#pipeline-design)
-5. Design of `stages`
-6. Design of `extractors`
-7. Writing custom `stages`
-8. Writing custom `extractors`
+3. [Available stages](#available-stages)
+    1. [Custom stages](#defining-a-custom-stage)
 
 ## Installation
 1. Ask **Matthijs** for an invite to the private github repository (it's private for now as I want to refine it a bit before I publish it).
+
 ### Windows & MacOS
 2. [Install Anaconda or miniconda](https://www.anaconda.com/docs/getting-started/anaconda/install#windows-installation)
 3. Open the Anaconda cmd prompt
 4. Run the following command: `pip install git+[link to git]`
+
 ### Linux
-3. Create a virtual environment where you want to use the pipeline: `$ pip -m venv venv`
-4. Activate the virtual environment: `$ . venv/bin/activate`
-2. Install the module from the private repo: `$ pip install git+[link to git]`
+2. Create a virtual environment where you want to use the pipeline: `$ pip -m venv venv`
+3. Activate the virtual environment: `$ . venv/bin/activate`
+4. Install the module from the private repo: `$ pip install git+[link to git]`
 
 ## Usage
-The pipeline is defined and used through the [Pipeline object](#pipeline-design). As a convention, class names use what is known as "CamelCase", while other variables use_this_style_of_naming.
+The pipeline is defined and used through the [Pipeline object](#pipeline-design). As a convention, class names use what is known as "CamelCase", while other variables use_this_style_of_naming. Available pipeline stages can be found [here](#available-stages).
 
+### Pipeline definition
 ```python
 # Example:
 import Pipeline from pipeline
@@ -54,22 +60,81 @@ Available stages can be listed by running `help(pipeline.stages)` or `?pipeline.
 
 ## Available stages
 ### Single output segment
-- `lowpass(cutoff_fq, fs, order=10)`
-    - Apply a lowpass filter with `cutoff_fq` as the cutoff frequency in Hz, `fs` as the sampling rate and `order` as the order of the filter.
-    - The sampling rate can be extracted from an abf file using `ABF().SampleRate`
-- `as_ires(minsamples=1000)`
-    - Calculate the _residual current_ (Ires) from the baseline.
-    - Automatically detects the baseline based on a binning approach.
-    - `minsamples` determines how many samples a bin needs to be considered a proper level and not just a fast current "spike".
-- `trim(left=0, right=1)`
-    - Trim off this many samples from the `left` or the `right` side.
-    - If the sampling rate was assigned to a variable named `fs`, you can use this to calculate how many _seconds_ to trim off each side using `nseconds * fs`.
 
+| Syntax                             | Description                                                                                                                                                                                                                                          |
+|------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `lowpass(cutoff_fq, fs, order=10)` | Apply a lowpass filter with `cutoff_fq` as the cutoff frequency in Hz, `fs` as the sampling rate and `order` as the order of the filter. The sampling rate can be extracted from an abf file using `ABF().SampleRate`                                |
+| `as_ires(minsamples=1000)`         | Calculate the _residual current_ (Ires) from the baseline. Automatically detects the baseline based on a binning approach. `minsamples` determines how many samples a bin needs to be considered a proper level and not just a fast current "spike". |
+| `trim(left=0, right=1)`            | Trim off this many samples from the `left` or the `right` side.  If the sampling rate was assigned to a variable named `fs`, you can use this to calculate how many _seconds_ to trim off each side using `nseconds * fs`.                           |
 
 ### Multiple output segments
-- `threshold`
-- `levels`
-- `switch`
 
-## Pipeline design
+| Syntax                                            | Description                                                                                                                                                                                                                                                                                                                                                                                                           |
+|---------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `switch()`                                        | Segment a gapfree trace based on large, short, current spikes cause by manual voltage switching.                                                                                                                                                                                                                                                                                                                      |
+| `threshold(lo,hi)`                                | Segment an input segment by consecutive stretches of current between `lo` and `hi`.                                                                                                                                                                                                                                                                                                                                   |
+| `levels(n, tol=0, sortby='mean')`                 | Detect sublevels by fitting a [gaussian mixture model](https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html). Use `n` to set the number of gaussians to fit, `tol` is a number between 0 and 1 and controls how much short spikes are tolerated. `sortby` controls how the gaussians are labeled, can be sorted by "mean" or by "weight" (weight being the height of the gaussian). |
 
+### Decorators
+[Decorators](https://peps.python.org/pep-0318/) are functions that wrap around other functions with a convenient syntax. I use them to _enhance_ the "default" behavior of the stages and they live in `pipeline.decorators`. The following decorators are predefined:
+
+| Name                                | Description                                                                                                                                                                                                                                                                                                                   |
+|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `cutoff`                           | Add a filter to a stage that blocks yielding segments _smaller than_ the cutoff. `cutoff` adds the "cutoff" keyword argument to a stage.                                                                                                                                                                                      |
+| `partial`                          | Essentially functions as [functools.partial](https://docs.python.org/3/library/functools.html) but in a decorator form for convenience. Allows pre-defining some arguments when the decorated function is called. I use it to set keyword arguments and only leave _positional arguments_ to be filled when the stage is run. |
+
+
+### Defining a custom stage
+Stages are functions (`callable`s) that take only two _positional arguments_: `t`(time) and `y`(current). The function then does something to transform the data or calculate new segments and `yield`s segments. By using `yield` instead of `return` the function is turned into a [generator](https://docs.python.org/3/reference/expressions.html#yieldexpr) and can be used as an `iterable`. All stages need to be `generator`s or return an `iterable`.
+
+```python
+def new_stage(t,y):
+    """An example pipeline stage that "yields" new segments"""
+    t_segments = f(t)
+    y_segments = f(y)
+    for new_t, new_y in zip(t_segments, y_segments):
+        # Using "yield" turns the function into a generator
+        yield new_t, new_y
+```
+
+The stage can then be given to the pipeline like so:
+
+```python
+Pipeline(
+    new_stage
+)
+```
+
+Extra options can be given when the pipeline is defined by using the `partial` decorator when defining the function like so:
+
+```python
+from pipeline.decorators import partial
+
+@partial
+def new_stage(t,y,*,extra_argument):
+    """An example pipeline stage that "yields" new segments"""
+    t_segments = f(t, extra_argument)
+    y_segments = f(y, extra_argument)
+    for new_t, new_y in zip(t_segments, y_segments):
+        # Using "yield" turns the function into a generator
+        yield new_t, new_y
+
+Pipeline(
+    new_stage(extra_argument)
+)
+```
+
+The `cutoff` decorator is used on a many built-in stages to filter out segments that are too short. It can be added to a custom stage like so:
+
+```python
+from pipeline.decorators import cutoff
+
+@cutoff
+def new_stage(t,y):
+    """An example pipeline stage that "yields" new segments"""
+    t_segments = f(t)
+    y_segments = f(y)
+    for new_t, new_y in zip(t_segments, y_segments):
+        # Using "yield" turns the function into a generator
+        yield new_t, new_y
+```
