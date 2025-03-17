@@ -181,11 +181,14 @@ class Root(NodeMixin, PoolMixin):
             # Optimization: calculate features for events in parallel ahead of time
             features = []
             cols = []
+            if self.njobs > 1:
+                logger.warning("njobs > 1 does not work with decorated extractors")
             for extractor in self.extractors:
                 extracted = Parallel(n_jobs=self.njobs, backend='multiprocessing')(
                     delayed(extractor)(event.t,event.y)
                     for event in tqdm(self.events, desc="extracting features %s"%extractor.__name__)
                 )
+                logger.debug(f"{len(extracted)=}")
                 extracted = np.array(extracted)
                 if len(extracted.shape) == 1:
                     extracted = extracted[...,None]

@@ -11,9 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import logging
 from functools import wraps
 
+import numpy as np
+
+logger = logging.getLogger(__name__)
+
+def catch_errors(n=1):
+    """Catch errors and return nan instead of breaking"""
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            try:
+                return f(*args, **kwargs)
+            except Exception as e:
+                logger.error(e)
+                if n > 1:
+                    return [np.nan]*n
+                else:
+                    return np.nan
+        return wrapper
+    return decorator
 
 def partial(f):
     """Decorate a function so that the first call saves the arguments in a closure"""
