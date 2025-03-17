@@ -142,6 +142,8 @@ class Root(NodeMixin, PoolMixin):
         self._features = None # Cache features
 
         self.pipe = pipe
+        if extractors is None:
+            extractors = []
         self.extractors = extractors
         self.columns = columns
         self.stages = stages
@@ -175,7 +177,6 @@ class Root(NodeMixin, PoolMixin):
         """
         #TODO this needs some refactoring
         # Cache features
-        if self.extractors is None: return
         if self._features is None:
             # Optimization: calculate features for events in parallel ahead of time
             features = []
