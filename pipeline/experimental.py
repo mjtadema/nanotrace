@@ -5,7 +5,7 @@ import numpy as np
 from scipy.signal import resample, fftconvolve
 from dtw import dtw
 
-from pipeline import partial
+from .decorators import partial
 
 
 @partial
