@@ -22,6 +22,7 @@ def as_abf(abf: ABFLike) -> ABF:
 
 
 def polarity(y):
+    """Calculate the polarity of a trace by determining the sign of the median current"""
     return np.sign(np.median(y))
 
 
