@@ -88,7 +88,7 @@ from functools import wraps
 
 import numpy as np
 from scipy import signal
-from scipy.signal import find_peaks
+from scipy.signal import find_peaks, fftconvolve
 from sklearn.mixture import GaussianMixture
 
 
@@ -153,11 +153,17 @@ def binned(t, y, *, lo=0, hi=1, nbins=5):
 
 @partial
 @cutoff
-def threshold(t,y,*,lo,hi):
+def threshold(t,y,*,lo,hi,tol=0):
     """
     Segment into consecutive pieces between lo and hi
     """
-    mask = (lo < y) & (y < hi)
+    if tol > 0:
+        klen = int((len(y) / 10) * tol)
+        kernel = np.full(klen, 1 / klen)
+        smooth = fftconvolve(y, kernel, axes=0, mode='same')
+    else:
+        smooth = y
+    mask = (lo < smooth) & (smooth < hi)
     diff = np.diff(mask, prepend=0, append=0)
     start = np.arange(len(diff))[diff == 1]
     end = np.arange(len(diff))[diff == -1]
