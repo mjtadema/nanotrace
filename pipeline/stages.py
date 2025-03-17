@@ -187,6 +187,7 @@ def levels(t, y, *, n, tol=0, sortby='mean'):
         fit_ = GaussianMixture(n_components=n).fit(y.reshape(-1, 1))
     except ValueError:
         yield [], [], []
+        return
     # predict labels for each datapoint
     pred = smooth_pred(y, fit_, tol)
     # Get bounds between consecutive segments
