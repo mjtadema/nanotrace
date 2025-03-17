@@ -75,3 +75,104 @@ class Segment(NodeMixin, PoolMixin, ReprMixin):
                 gc.collect()
 
 
+class Root(NodeMixin, PoolMixin):
+    """
+    Special segment that acts as the interface to the pipeline, and the root of the tree of segments.
+    As the main interface to the tree, Root implements some convenience functions and properties:
+    """
+    def __init__(self, stages, *, nsegments=-1, extractors=None, columns=None, pipe=None):
+        """
+        Root constructor takes an abf file and a pipeline of refi
+        :param pipeline: a list of functions acting as pipeline stages
+        :param extractors: a list of extractors to extract features from events
+        :param columns: a list of column names to add to the features dataframe
+        :param abf:
+        :param gc: bool, garbage collect (default: False)
+        :param njobs: number of jobs to run in parallel
+        """
+        self._features = None # Cache features
+
+        self.pipe = pipe
+        self.extractors = extractors
+        self.columns = columns
+        self.stages = stages
+        self.nsegments = nsegments
+
+    def __getitem__(self, item):
+        if isinstance(item, int):
+            return self.by_index[item]
+        elif isinstance(item, str):
+            # Makes Root usable as a key addressable object
+            if hasattr(self, item):
+                return getattr(self, item)
+            else:
+                return self.by_name[item]
+        else:
+            raise TypeError("item must be either str or int, is %s", type(item))
+
+    @property
+    def njobs(self):
+        return self.pipe.njobs
+
+    @property
+    def gc(self):
+        return self.pipe.gc
+
+    @property
+    @requires_children
+    def features(self):
+        """
+        Centrally extract features from events so that we can pool them and extract in parallel
+        """
+        #TODO this needs some refactoring
+        # Cache features
+        if self.extractors is None: return
+        if self._features is None:
+            # Optimization: calculate features for events in parallel ahead of time
+            features = []
+            cols = []
+            for extractor in self.extractors:
+                extracted = Parallel(n_jobs=self.njobs, backend='multiprocessing')(
+                    delayed(extractor)(event.t,event.y)
+                    for event in tqdm(self.events, desc="extracting features %s"%extractor.__name__)
+                )
+                extracted = np.array(extracted)
+                if len(extracted.shape) == 1:
+                    extracted = extracted[...,None]
+                features.append(extracted)
+                cols.extend([extractor.__name__+'_%d'%i for i in range(extracted.shape[-1])])
+            if not self.columns is None:
+                cols = self.columns
+            self._features = pd.DataFrame(np.hstack(features), columns=cols)
+        return self._features
+
+
+    @property
+    @requires_children
+    def by_index(self):
+        """
+        returns a list of nodes grouped by level
+        """
+        return list(LevelOrderGroupIter(self))
+
+    @property
+    @requires_children
+    def by_name(self):
+        """
+        returns a dict of nodes grouped by stage
+        :return:
+        """
+        return {
+            (stage.__name__ if callable(stage) else stage): level
+            for stage, level in zip(
+                ['root','sweep', *self.by_name],
+                LevelOrderGroupIter(self)
+            )
+        }
+
+    @property
+    @requires_children
+    def events(self):
+        """Return segments from the lowest level"""
+        return self.by_index[-1]
+
