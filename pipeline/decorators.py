@@ -19,18 +19,11 @@ def partial(f):
 def cutoff(f):
     """Filter out any segments shorter than the cutoff n samples"""
     @wraps(f)
-    def closure(*args, cutoff=0, **kwargs):
-        @partial
-        @wraps(f)
-        def with_cutoff(*args, **kwargs):
-            for t,y,*l in f(*args, **kwargs):
-                if len(t) > cutoff:
-                    yield t,y,*l
-        if cutoff > 0:
-            return with_cutoff(*args, **kwargs)
-        else:
-            return f(*args, **kwargs)
-    return closure
+    def wrapper(*args, cutoff=0, **kwargs):
+        for t, y, *l in f(*args, **kwargs):
+            if len(t) > cutoff:
+                yield t, y, *l
+    return wrapper
 
 
 def requires_children(f):
