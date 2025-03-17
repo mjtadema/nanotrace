@@ -102,26 +102,30 @@ class Segment(NodeMixin, PoolMixin, ReprMixin):
         """
         if self.stage is not None:
             logger.debug("Segmenting with %s", self.stage.__name__)
-            if self.nsegments > 0:
-                logger.info(f"Only generating {self.nsegments}")
-                for i, (t,y,*l) in enumerate(self.stage(self.t, self.y)):
+            # if self.nsegments > 0:
+            # logger.info(f"Only generating {self.nsegments}")
+            for i, (t,y,*l) in enumerate(self.stage(self.t, self.y)):
+                try:
                     seg = Segment(t,y,l,stages=self.residual, name=self.stage.__name__)
                     seg.parent = self
                     if i == self.nsegments:
                         break
-            else:
-                # Optimization: Generate new segments in parallel
-                # Works best with generating many small segments
-                # TODO actually is super slow with n_jobs > 1... maybe because of the loki backend
-                for seg in Parallel(n_jobs=1)(delayed(Segment)(
-                        t,y,l, stages=self.residual, name=self.stage.__name__
-                ) for t,y,*l in self.stage(self.t, self.y)):
-                    seg.parent = self
-                if self.gc:
-                    # Unset the data arrays and run the garbage collector to save memory
-                    self.t = []
-                    self.y = []
-                    gc.collect()
+                except Exception as e:
+                    logger.error(e)
+                    pass
+
+            # else:
+            #     # Optimization: Generate new segments in parallel
+            #     # Works best with generating many small segments
+            #     for seg in Parallel(n_jobs=1)(delayed(Segment)(
+            #             t,y,l, stages=self.residual, name=self.stage.__name__
+            #     ) for t,y,*l in self.stage(self.t, self.y)):
+            #         seg.parent = self
+            #     if self.gc:
+            #         # Unset the data arrays and run the garbage collector to save memory
+            #         self.t = []
+            #         self.y = []
+            #         gc.collect()
 
 
 class Root(NodeMixin, PoolMixin):
