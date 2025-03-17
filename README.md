@@ -44,7 +44,7 @@ pipeline = Pipeline(
 import ABF from pyabf
 
 abf = ABF("some_abf_file.abf")
-fs = abf.SampleRate # get sample rate in Hz
+fs = abf.sampleRate # get sample rate in Hz
 ```
 
 The pipeline takes any number of functions (or `callables`) as arguments that make up the stages of the pipeline in the order that they will be run.
