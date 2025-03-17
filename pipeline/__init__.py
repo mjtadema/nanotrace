@@ -21,5 +21,8 @@ The main module also imports ABF from pyabf for convenience.
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
+logging.basicConfig()
+logging.getLogger(__name__).setLevel(logging.WARNING)
 from .pipeline import Pipeline
 from pyabf import ABF
