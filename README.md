@@ -16,12 +16,12 @@ This guide will cover the following topics:
 ### Windows & MacOS
 2. [Install Anaconda or miniconda](https://www.anaconda.com/docs/getting-started/anaconda/install#windows-installation)
 3. Open the Anaconda cmd prompt
-4. Run the following command: `pip install git+[link to git]`
+4. Run the following command: `pip install git+https://github.com/mjtadema/pipeline.git`
 
 ### Linux
 2. Create a virtual environment where you want to use the pipeline: `$ pip -m venv venv`
 3. Activate the virtual environment: `$ . venv/bin/activate`
-4. Install the module from the private repo: `$ pip install git+[link to git]`
+4. Install the module from the private repo: `$ pip install git+https://github.com/mjtadema/pipeline.git`
 
 ## Usage
 The pipeline is defined and used through the [Pipeline object](#pipeline-design). As a convention, class names use what is known as "CamelCase", while other variables use_this_style_of_naming. Available pipeline stages can be found [here](#available-stages).
