@@ -21,7 +21,10 @@ This guide will cover the following topics:
 ### Linux
 2. Create a virtual environment where you want to use the pipeline: `$ pip -m venv venv`
 3. Activate the virtual environment: `$ . venv/bin/activate`
-4. Install the module from the private repo: `$ pip install git+https://github.com/mjtadema/pipeline.git`
+
+### All platforms
+4. Install the module from the private repo: `pip install git+https://github.com/mjtadema/pipeline.git`
+   1. to update, run: `pip install --upgrade git+https://github.com/mjtadema/pipeline.git`
 
 ## Usage
 The pipeline is defined and used through the [Pipeline object](#pipeline-design). As a convention, class names use what is known as "CamelCase", while other variables use_this_style_of_naming. Available pipeline stages can be found [here](#available-stages).
@@ -36,7 +39,7 @@ import pipeline
 help(pipeline.stages)
 
 pipeline = Pipeline(
-	stage_1,
+    stage_1,
     stage_2,
     stage_3
 )
@@ -132,3 +135,6 @@ def new_stage(t,y):
         # Using "yield" turns the function into a generator
         yield new_t, new_y
 ```
+
+## Extractors
+**coming soon**
