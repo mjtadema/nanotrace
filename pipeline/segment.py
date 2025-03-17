@@ -50,7 +50,10 @@ class Segment(NodeMixin, PoolMixin, ReprMixin):
         """
         self.t = t
         self.y = y
-        self.l = l
+        if len(l) > 0:
+            self.l = l
+        else:
+            self.l = None
         self.parent = parent
         self.name = name
         self._root = None
@@ -191,9 +194,16 @@ class Root(NodeMixin, PoolMixin):
                     extracted = extracted[...,None]
                 features.append(extracted)
                 cols.extend([extractor.__name__+'_%d'%i for i in range(extracted.shape[-1])])
+            if self.events[0].l is not None:
+                cols.append("label")
+                labels = []
+                for event in self.events:
+                    labels.append(event.l)
+                features.append(labels)
             if not self.columns is None:
                 cols = self.columns
-            self._features = pd.DataFrame(np.hstack(features), columns=cols)
+            if len(features) > 0:
+                self._features = pd.DataFrame(np.hstack(features), columns=cols)
         return self._features
 
 
