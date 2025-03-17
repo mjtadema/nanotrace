@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from .root import Root
+from .abf import AbfRoot
 from .utils import ABFLike, as_abf
 
 logger = logging.getLogger(__name__)
@@ -9,40 +9,60 @@ logger = logging.getLogger(__name__)
 
 class Pipeline:
     """
-    Pipeline factory with caching
+    The Pipeline class is the main class of this module.
+    Its job is to define the pipeline through _stages_, functions that each modify timeseries data
+    as steps in a in a pipeline.
+
+    Example:
+        ```
+        ref = Pipeline(
+            slices(slices=slice_list),
+            lowpass(cutoff_fq=10000, fs=fs),
+            as_ires(),
+            threshold(lo=0.4, hi=0.65, cutoff=0.001*fs),
+        )
+        ```
     """
-    def __init__(self, *pipeline, **kwargs):
+    def __init__(self, *stages, **kwargs):
         """
-        Pipeline constructor takes a list of functions that make up the pipeline that we refer to as "refiners".
-        These can be any callable, but they must take two arrays as arguments (time and current arrays)
-        and return an _iterable_ of time and current arrays.
-        Typically these are generators for simplicity.
-        Refiners that don't return anything can be used to filter out unwanted segments
-        Refiners that return an iterable with only one time and current array can be used to filter the data itself
-        See
-        :param pipeline:
-        :param kwargs:
+        A pipeline is constructed as a linear list of pipeline "stages".
+
+        :param stages: a list of stages (callables) that make up the pipeline steps
+        :param kwargs: additional keyword arguments are passed to the root segment
         """
+        # The pipeline instance caches the root segment with the abf file paths as keys
         self._cache = {}
-        logger.debug("Constructing pipeline with %d steps: %s", len(pipeline), ",".join([f.__name__ for f in pipeline]))
-        self.pipeline = pipeline
+        logger.debug("Constructing pipeline with %d steps: %s", len(stages), ",".join([f.__name__ for f in stages]))
+        self.stages = stages
         self.kwargs = kwargs
 
     def __str__(self):
-        return "Pipeline: %s with %d stages" % (self.__name__, len(self.pipeline))
+        repr = "Pipeline with %d stage(s): " % (len(self.stages))
+        repr += ', '.join([stage.__name__ for stage in self.stages])
+        return repr
 
-    def __call__(self, abf: ABFLike):
+    def __repr__(self):
+        return str(self)
+
+    def __call__(self, abf: ABFLike, njobs=1, gc=False, cache=True):
         """
         When called with an abf file, construct a segment tree from its data and cache it.
         kwargs of the pipeline constructor are passed to the root of the tree
-        :param abf:
-        :return: Root
+        :param abf: ABF file
+        :return: Root segment instance
         """
+        #TODO this is a bit messy
+        self.njobs = njobs
+        self.gc = gc
         abf = as_abf(abf)
         abfpath = Path(abf.abfFilePath)
         if not abfpath.absolute() in self._cache:
             logger.debug("Creating tree from %s", abfpath)
+            rt = AbfRoot(abf, self.stages, pipe=self, **self.kwargs)
+            if not cache:
+                # Don't cache if testing
+                return rt
             # Absolute file path is used as a key for caching, could use file hash
-            self._cache[abfpath] = Root(abf, self.pipeline, **self.kwargs)
+            self._cache[abfpath] = rt
         logger.debug("Returning cached tree")
         return self._cache[abfpath]
