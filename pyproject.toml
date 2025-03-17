@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pipeline"
+version = "0.0.1"
+authors = [
+  { name="Matthijs Tadema", email="m.j.tadema@rug.nl" },
+]
+description = "Automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "Apache-2.0"
+license-files = ["LICEN[CS]E*"]
+dependencies = [
+    "matplotlib~=3.10.0",
+    "numpy~=2.2.2",
+    "pyabf~=2.3.8",
+    "pandas~=2.2.3",
+    "anytree~=2.12.1",
+    "scipy~=1.15.1",
+    "scikit-learn~=1.6.1",
+    "joblib~=1.4.2",
+    "tqdm~=4.67.1",
+]
+
+
+[project.urls]
+Homepage = "https://github.com/mjtadema/pipeline"
+Issues = "https://github.com/mjtadema/pipeline/issues"
