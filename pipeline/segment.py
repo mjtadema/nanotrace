@@ -105,14 +105,10 @@ class Segment(NodeMixin, PoolMixin, ReprMixin):
             # if self.nsegments > 0:
             # logger.info(f"Only generating {self.nsegments}")
             for i, (t,y,*l) in enumerate(self.stage(self.t, self.y)):
-                try:
-                    seg = Segment(t,y,l,stages=self.residual, name=self.stage.__name__)
-                    seg.parent = self
-                    if i == self.nsegments:
-                        break
-                except Exception as e:
-                    logger.error(e)
-                    pass
+                seg = Segment(t,y,l,stages=self.residual, name=self.stage.__name__)
+                seg.parent = self
+                if i == self.nsegments:
+                    break
 
             # else:
             #     # Optimization: Generate new segments in parallel
