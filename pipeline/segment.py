@@ -23,6 +23,7 @@ from anytree import NodeMixin, Resolver, LevelOrderGroupIter
 from joblib import Parallel, delayed
 from tqdm.asyncio import tqdm
 
+from .plot import PlotMixin
 from .decorators import requires_children
 from .utils import PoolMixin, ReprMixin
 
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 name_resolver = Resolver('name')
 
 
-class Segment(NodeMixin, PoolMixin, ReprMixin):
+class Segment(NodeMixin, PoolMixin, ReprMixin, PlotMixin):
     """
     Segments make up the nodes and leaves of the tree.
     Segments have parent segments and child segments.
@@ -224,16 +225,14 @@ class Root(NodeMixin, PoolMixin):
 
     @property
     @requires_children
-    def by_name(self) -> dict[str, Segment]:
+    def by_name(self) -> dict[str, tuple[Segment]]:
         """
-        returns a dict of nodes grouped by stage
-        :return:
+        :return: a dict of tuples containing nodes grouped by stage
         """
-        # TODO this needs to be fixed
         return {
             (stage.__name__ if callable(stage) else stage): level
             for stage, level in zip(
-                ['root', 'sweep', *self.by_name],
+                ['root', 'sweep', *self.stages],
                 LevelOrderGroupIter(self)
             )
         }
