@@ -102,6 +102,19 @@ class Segment(NodeMixin, PoolMixin, ReprMixin, PlotMixin):
         return NodeMixin.children.fget(self)
     # TODO property for events
 
+    @property
+    @requires_children
+    def by_index(self) -> list[tuple[object]]:
+        """
+        returns a list of nodes grouped by level
+        """
+        return list(LevelOrderGroupIter(self))
+
+    @property
+    def events(self) -> tuple[object]:
+        """Return segments from the lowest level"""
+        return self.by_index[-1]
+
     def derive_children(self):
         """
         Run the stage to derive children.
