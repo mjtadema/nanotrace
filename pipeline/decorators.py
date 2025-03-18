@@ -63,7 +63,7 @@ def cutoff(f: Callable) -> Callable:
     """Filter out any segments shorter than the cutoff n samples"""
 
     @wraps(f)
-    def wrapper(*args, cutoff=0, **kwargs) -> Generator[tuple[np.array, np.array, list]]:
+    def wrapper(*args, cutoff=0, **kwargs) -> Generator:
         for t, y, *l in f(*args, **kwargs):
             if len(t) > cutoff:
                 yield t, y, *l
