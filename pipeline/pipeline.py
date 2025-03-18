@@ -1,21 +1,24 @@
-# Copyright 2025 Matthijs Tadema
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+__copyright__ = """
+Copyright 2025 Matthijs Tadema
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 
 import logging
 from pathlib import Path
 
 from .abf import AbfRoot
+from .segment import Root
 from .utils import ABFLike, as_abf
 
 logger = logging.getLogger(__name__)
@@ -37,7 +40,8 @@ class Pipeline:
         )
         ```
     """
-    def __init__(self, *stages, **kwargs):
+
+    def __init__(self, *stages, **kwargs) -> None:
         """
         A pipeline is constructed as a linear list of pipeline "stages".
 
@@ -50,22 +54,22 @@ class Pipeline:
         self.stages = stages
         self.kwargs = kwargs
 
-    def __str__(self):
+    def __str__(self) -> str:
         repr = "Pipeline with %d stage(s): " % (len(self.stages))
         repr += ', '.join([stage.__name__ for stage in self.stages])
         return repr
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def __call__(self, abf: ABFLike, njobs=1, gc=False, cache=True):
+    def __call__(self, abf: ABFLike, njobs=1, gc=False, cache=True) -> Root:
         """
         When called with an abf file, construct a segment tree from its data and cache it.
         kwargs of the pipeline constructor are passed to the root of the tree
         :param abf: ABF file
         :return: Root segment instance
         """
-        #TODO this is a bit messy
+        # TODO this is a bit messy
         self.njobs = njobs
         self.gc = gc
         abf = as_abf(abf)

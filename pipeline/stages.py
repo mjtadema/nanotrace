@@ -68,21 +68,21 @@ Custom stages:
                 yield new_time, new_current
 
 """
+__copyright__ = """
+Copyright 2025 Matthijs Tadema
 
-# Copyright 2025 Matthijs Tadema
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 
 from functools import wraps
 
@@ -91,14 +91,12 @@ from scipy import signal
 from scipy.signal import find_peaks, fftconvolve
 from sklearn.mixture import GaussianMixture
 
-
-
-from .utils import baseline, smooth_pred
 from .decorators import partial, cutoff
+from .utils import baseline, smooth_pred
 
 
 @cutoff
-def switch(t,y):
+def switch(t, y):
     """
     Segment a raw trace based on manual voltage switch spikes
     """
@@ -108,14 +106,14 @@ def switch(t,y):
     los = find_peaks(-y, height=-lo)[0]
 
     # Also add the start and end otherwise we skip segments
-    bounds = np.sort(np.concatenate([[0], his, los, [len(y)-1]]))
+    bounds = np.sort(np.concatenate([[0], his, los, [len(y) - 1]]))
 
     for s, e in zip(bounds[:-1], bounds[1:]):
         yield t[s:e], y[s:e]
 
 
 @partial
-def lowpass(t,y, *, cutoff_fq, fs, order=10):
+def lowpass(t, y, *, cutoff_fq, fs, order=10):
     """
     Wrap a lowpass butterworth filter
     :param t:
@@ -132,9 +130,9 @@ def lowpass(t,y, *, cutoff_fq, fs, order=10):
 
 
 @partial
-def as_ires(t,y,minsamples=1000):
+def as_ires(t, y, minsamples=1000):
     """Calculate Ires using an automatic baseline calculation"""
-    yield t, y/baseline(y,minsamples)
+    yield t, y / baseline(y, minsamples)
 
 
 @partial
@@ -153,7 +151,7 @@ def binned(t, y, *, lo=0, hi=1, nbins=5):
 
 @partial
 @cutoff
-def threshold(t,y,*,lo,hi,tol=0):
+def threshold(t, y, *, lo, hi, tol=0):
     """
     Segment into consecutive pieces between lo and hi
     """
@@ -167,12 +165,12 @@ def threshold(t,y,*,lo,hi,tol=0):
     diff = np.diff(mask, prepend=0, append=0)
     start = np.arange(len(diff))[diff == 1]
     end = np.arange(len(diff))[diff == -1]
-    for s,e in zip(start,end):
+    for s, e in zip(start, end):
         yield t[s:e], y[s:e]
 
 
 @partial
-def trim(t,y,*,left=0,right=1):
+def trim(t, y, *, left=0, right=1):
     """Trim off part of the segment"""
     left = int(left)
     right = int(right)
@@ -214,9 +212,11 @@ def levels(t, y, *, n, tol=0, sortby='mean'):
     padded = np.pad(pred, pad_width=(0, 2), mode='edge')
     for s, e, l in zip(bounds[:-1], bounds[1:], padded[bounds + 1]):
         # l becomes a feature with function name as column name
-        yield t[s:e], y[s:e], l  # This is the way to smuggle out extra information without having access to the segment yet
+        yield t[s:e], y[
+                      s:e], l  # This is the way to smuggle out extra information without having access to the segment yet
 
-def volt(c,v):
+
+def volt(c, v):
     """
     Given the control voltage array and a target voltage,
     cache start and end indices in a closure that slice the sweep at the target voltage.
@@ -226,7 +226,9 @@ def volt(c,v):
     :return: function that slices the sweep
     """
     start, end = np.arange(len(c))[np.diff(c == v, append=0) != 0]
+
     @wraps(volt)
-    def cached(t,y):
+    def cached(t, y):
         yield t[start:end], y[start:end]
+
     return cached

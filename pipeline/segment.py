@@ -1,18 +1,21 @@
-# Copyright 2025 Matthijs Tadema
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+__copyright__ = """
+Copyright 2025 Matthijs Tadema
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 
 import logging
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -20,20 +23,21 @@ from anytree import NodeMixin, Resolver, LevelOrderGroupIter
 from joblib import Parallel, delayed
 from tqdm.asyncio import tqdm
 
+from .plot import PlotMixin
 from .decorators import requires_children
 from .utils import PoolMixin, ReprMixin
-import gc
 
 logger = logging.getLogger(__name__)
 
 name_resolver = Resolver('name')
 
 
-class Segment(NodeMixin, PoolMixin, ReprMixin):
+class Segment(NodeMixin, PoolMixin, ReprMixin, PlotMixin):
     """
     Segments make up the nodes and leaves of the tree.
     Segments have parent segments and child segments.
     """
+
     def __init__(
             self, t: np.ndarray, y: np.ndarray, l: list, stages: list, *,
             name=None, parent=None
@@ -57,7 +61,7 @@ class Segment(NodeMixin, PoolMixin, ReprMixin):
         self.parent = parent
         self.name = name
         self._root = None
-        #TODO this could be simplified by simply taking parent.stages[1:] for each subsequent stage
+        # TODO this could be simplified by simply taking parent.stages[1:] for each subsequent stage
 
         # Consume part of the pipeline stages
         logger.debug(f"{stages=}")
@@ -96,6 +100,20 @@ class Segment(NodeMixin, PoolMixin, ReprMixin):
         if not NodeMixin.children.fget(self):
             self.derive_children()
         return NodeMixin.children.fget(self)
+    # TODO property for events
+
+    @property
+    @requires_children
+    def by_index(self) -> list[tuple[object]]:
+        """
+        returns a list of nodes grouped by level
+        """
+        return list(LevelOrderGroupIter(self))
+
+    @property
+    def events(self) -> tuple[object]:
+        """Return segments from the lowest level"""
+        return self.by_index[-1]
 
     def derive_children(self):
         """
@@ -107,8 +125,8 @@ class Segment(NodeMixin, PoolMixin, ReprMixin):
             logger.debug("Segmenting with %s", self.stage.__name__)
             # if self.nsegments > 0:
             # logger.info(f"Only generating {self.nsegments}")
-            for i, (t,y,*l) in enumerate(self.stage(self.t, self.y)):
-                seg = Segment(t,y,l,stages=self.residual, name=self.stage.__name__)
+            for i, (t, y, *l) in enumerate(self.stage(self.t, self.y)):
+                seg = Segment(t, y, l, stages=self.residual, name=self.stage.__name__)
                 seg.parent = self
                 if i == self.nsegments:
                     break
@@ -132,7 +150,8 @@ class Root(NodeMixin, PoolMixin):
     Special segment that acts as the interface to the pipeline, and the root of the tree of segments.
     As the main interface to the tree, Root implements some convenience functions and properties:
     """
-    def __init__(self, stages, *, nsegments=-1, extractors=None, columns=None, pipe=None):
+
+    def __init__(self, stages, *, nsegments=-1, extractors=None, columns=None, pipe=None) -> None:
         """
         Root constructor takes an abf file and a pipeline of refi
         :param pipeline: a list of functions acting as pipeline stages
@@ -142,7 +161,7 @@ class Root(NodeMixin, PoolMixin):
         :param gc: bool, garbage collect (default: False)
         :param njobs: number of jobs to run in parallel
         """
-        self._features = None # Cache features
+        self._features = None  # Cache features
 
         self.pipe = pipe
         if extractors is None:
@@ -152,7 +171,7 @@ class Root(NodeMixin, PoolMixin):
         self.stages = stages
         self.nsegments = nsegments
 
-    def __getitem__(self, item):
+    def __getitem__(self, item) -> Any:
         if isinstance(item, int):
             return self.by_index[item]
         elif isinstance(item, str):
@@ -165,20 +184,20 @@ class Root(NodeMixin, PoolMixin):
             raise TypeError("item must be either str or int, is %s", type(item))
 
     @property
-    def njobs(self):
+    def njobs(self) -> int:
         return self.pipe.njobs
 
     @property
-    def gc(self):
+    def gc(self) -> bool:
         return self.pipe.gc
 
     @property
     @requires_children
-    def features(self):
+    def features(self) -> pd.DataFrame:
         """
         Centrally extract features from events so that we can pool them and extract in parallel
         """
-        #TODO this needs some refactoring
+        # TODO this needs some refactoring
         # Cache features
         if self._features is None:
             # Optimization: calculate features for events in parallel ahead of time
@@ -188,15 +207,15 @@ class Root(NodeMixin, PoolMixin):
                 logger.warning("njobs > 1 does not work with decorated extractors")
             for extractor in self.extractors:
                 extracted = Parallel(n_jobs=self.njobs, backend='multiprocessing')(
-                    delayed(extractor)(event.t,event.y)
-                    for event in tqdm(self.events, desc="extracting features %s"%extractor.__name__)
+                    delayed(extractor)(event.t, event.y)
+                    for event in tqdm(self.events, desc="extracting features %s" % extractor.__name__)
                 )
                 logger.debug(f"{len(extracted)=}")
                 extracted = np.array(extracted)
                 if len(extracted.shape) == 1:
-                    extracted = extracted[...,None]
+                    extracted = extracted[..., None]
                 features.append(extracted)
-                cols.extend([extractor.__name__+'_%d'%i for i in range(extracted.shape[-1])])
+                cols.extend([extractor.__name__ + '_%d' % i for i in range(extracted.shape[-1])])
             if self.events[0].l is not None:
                 cols.append("label")
                 labels = []
@@ -209,10 +228,9 @@ class Root(NodeMixin, PoolMixin):
                 self._features = pd.DataFrame(np.hstack(features), columns=cols)
         return self._features
 
-
     @property
     @requires_children
-    def by_index(self):
+    def by_index(self) -> list[list[Segment]]:
         """
         returns a list of nodes grouped by level
         """
@@ -220,22 +238,20 @@ class Root(NodeMixin, PoolMixin):
 
     @property
     @requires_children
-    def by_name(self):
+    def by_name(self) -> dict[str, tuple[Segment]]:
         """
-        returns a dict of nodes grouped by stage
-        :return:
+        :return: a dict of tuples containing nodes grouped by stage
         """
         return {
             (stage.__name__ if callable(stage) else stage): level
             for stage, level in zip(
-                ['root','sweep', *self.by_name],
+                ['root', 'sweep', *self.stages],
                 LevelOrderGroupIter(self)
             )
         }
 
     @property
     @requires_children
-    def events(self):
+    def events(self) -> list[Segment]:
         """Return segments from the lowest level"""
         return self.by_index[-1]
-

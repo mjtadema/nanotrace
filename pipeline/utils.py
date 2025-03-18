@@ -1,28 +1,30 @@
-# Copyright 2025 Matthijs Tadema
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+__copyright__ = """
+Copyright 2025 Matthijs Tadema
 
-import numpy as np
-import pandas as pd
-from anytree import RenderTree
-from scipy.signal import fftconvolve
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 
 from pathlib import Path
 from typing import Union
 
+import numpy as np
+import pandas as pd
+from anytree import RenderTree
 from pyabf import ABF
+from scipy.signal import fftconvolve
 
 ABFLike = Union[ABF, str, Path]
+
 
 def as_abf(abf: ABFLike) -> ABF:
     if not isinstance(abf, ABFLike):
@@ -71,17 +73,18 @@ def smooth_pred(y, fit_, tol):
     return pred
 
 
-def reject_outliers(data, m = 2.):
+def reject_outliers(data, m=2.):
     d = np.abs(data - np.median(data))
     mdev = np.median(d)
-    s = d/mdev if mdev else np.zeros(len(d))
-    return data[s<m]
+    s = d / mdev if mdev else np.zeros(len(d))
+    return data[s < m]
 
 
 class PoolMixin:
     """
     Add pool method to NodeMixin
     """
+
     def pool(self):
         """
         Pool features from children
@@ -91,10 +94,12 @@ class PoolMixin:
         else:
             return pd.DataFrame()
 
+
 class ReprMixin:
     """
     Add tree rendering
     """
+
     def __repr__(self):
         """Fancy tree rendering"""
         out = []
