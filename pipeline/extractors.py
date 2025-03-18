@@ -33,8 +33,6 @@ from typing import Any
 
 import numpy as np
 from numpy import floating
-from numpy._core.fromnumeric import _SCT
-from numpy.core.multiarray import ndarray
 from scipy.signal import welch, periodogram
 from scipy.stats import gaussian_kde, skew, kurtosis
 from sklearn.mixture import GaussianMixture
@@ -71,21 +69,21 @@ def median(t: np.ndarray, y: np.ndarray) -> floating[Any]:
 
 
 @catch_errors()
-def _skew(t: np.ndarray, y: np.ndarray) -> ndarray:
+def _skew(t: np.ndarray, y: np.ndarray) -> np.ndarray:
     x = np.linspace(0, 1, 100)
     k = gaussian_kde(y)
     return skew(k(x))
 
 
 @catch_errors()
-def kurt(t: np.ndarray, y: np.ndarray) -> ndarray:
+def kurt(t: np.ndarray, y: np.ndarray) -> np.ndarray:
     x = np.linspace(0, 1, 100)
     k = gaussian_kde(y)
     return kurtosis(k(x))
 
 
 @catch_errors(n=2)
-def clst_means(t: np.ndarray, y: np.ndarray) -> ndarray:
+def clst_means(t: np.ndarray, y: np.ndarray) -> np.ndarray:
     fit_ = GaussianMixture(n_components=2).fit(y.reshape(-1, 1))
     return np.sort(fit_.means_.flatten())
 

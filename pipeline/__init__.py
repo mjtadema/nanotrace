@@ -29,3 +29,4 @@ import logging
 logging.basicConfig()
 logging.getLogger(__name__).setLevel(logging.WARNING)
 from .pipeline import Pipeline
+from pyabf import ABF
