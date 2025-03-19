@@ -6,25 +6,34 @@ This guide will cover the following topics:
 
 ## Table of contents
 1. [Installation](#installation)
-2. [Usage example](#usage)
-3. [Available stages](#available-stages)
+2. [Updating](#updating)
+3. [Usage example](#usage)
+4. [Available stages](#available-stages)
     1. [Custom stages](#defining-a-custom-stage)
 
 ## Installation
 1. Ask **Matthijs** for an invite to the private github repository (it's private for now as I want to refine it a bit before I publish it).
 
-### Windows & MacOS
-2. [Install Anaconda or miniconda](https://www.anaconda.com/docs/getting-started/anaconda/install#windows-installation)
-3. Open the Anaconda cmd prompt
-4. Run the following command: `pip install git+https://github.com/mjtadema/pipeline.git`
+### Windows
+2. [Install GIT](https://git-scm.com/downloads/win)
+3. [Install Anaconda or miniconda](https://www.anaconda.com/docs/getting-started/anaconda/install#windows-installation)
+4. Create a virtual environment that you want to use for 
+5. Open the Anaconda cmd prompt **from the correct environment**
+6. Run the following command: `pip install git+https://github.com/mjtadema/pipeline.git`
 
 ### Linux
-2. Create a virtual environment where you want to use the pipeline: `$ pip -m venv venv`
-3. Activate the virtual environment: `$ . venv/bin/activate`
+2. Install git from whatever software repository you use (i.e. `sudo apt install git` for ubuntu/debian)
+3. (optional) install conda if you prefer
+4. Create a virtual environment where you want to use the pipeline: `$ pip -m venv venv`
+5. Activate the virtual environment: `$ . venv/bin/activate`
 
 ### All platforms
-4. Install the module from the private repo: `pip install git+https://github.com/mjtadema/pipeline.git`
-   1. to update, run: `pip install --upgrade --force-reinstall --no-deps git+https://github.com/mjtadema/pipeline.git`
+7. Install the module from the private repo: `pip install git+https://github.com/mjtadema/pipeline.git`
+
+## Updating
+Update using the latest development version **(Recommended)**: `pip install --upgrade --force-reinstall --no-deps git+https://github.com/mjtadema/pipeline.git`
+
+Update using the latest stable version: `pip install --upgrade --force-reinstall --no-deps git+https://github.com/mjtadema/pipeline.git@master`
 
 ## Usage
 The pipeline is defined and used through the [Pipeline object](#pipeline-design). As a convention, class names use what is known as "CamelCase", while other variables use_this_style_of_naming. Available pipeline stages can be found [here](#available-stages).
