@@ -14,14 +14,14 @@ This guide will cover the following topics:
 ## Installation
 1. Ask **Matthijs** for an invite to the private github repository (it's private for now as I want to refine it a bit before I publish it).
 
-### Windows
+### <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/brands/windows.svg" height="20" style="vertical-align: middle;"> <span style="vertical-align: middle;">Windows</span>
 2. [Install GIT](https://git-scm.com/downloads/win)
 3. [Install Anaconda or miniconda](https://www.anaconda.com/docs/getting-started/anaconda/install#windows-installation)
 4. Create a virtual environment that you want to use for 
 5. Open the Anaconda cmd prompt **from the correct environment**
 6. Run the following command: `pip install git+https://github.com/mjtadema/pipeline.git`
 
-### Linux
+### <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/brands/linux.svg" height="20" style="vertical-align: middle;"> <span style="vertical-align: middle;">Linux</span>
 2. Install git from whatever software repository you use (i.e. `sudo apt install git` for ubuntu/debian)
 3. (optional) install conda if you prefer
 4. Create a virtual environment where you want to use the pipeline: `$ pip -m venv venv`
