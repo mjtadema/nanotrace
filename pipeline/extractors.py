@@ -28,7 +28,7 @@ limitations under the License.
 """
 
 import logging
-from functools import partial
+import functools as ft
 from typing import Any
 
 import numpy as np
@@ -37,7 +37,7 @@ from scipy.signal import welch, periodogram
 from scipy.stats import gaussian_kde, skew, kurtosis
 from sklearn.mixture import GaussianMixture
 
-from .decorators import catch_errors
+from .decorators import catch_errors, partial
 
 logger = logging.getLogger(__name__)
 
@@ -93,9 +93,10 @@ global_features = [mean, std, ldt, median, _skew, kurt, clst_means]
 
 # Frequency features
 # TODO this should be done in a nice way _without_ the partial decorator
-def freq_by_power(t: np.ndarray, y: np.ndarray, *, n=8, fs: int) -> np.ndarray:
+@partial
+def psd_freq(t: np.ndarray, y: np.ndarray, *, n=8, fs: int) -> np.ndarray:
     """
-    Calculate the PSD and return the n strongest frequencies
+    Calculate the PSD and return the n most prevalent frequencies
     :param n: number of frequencies to return
     :param fs: sampling rate
     """
@@ -123,6 +124,6 @@ def _max(t: np.ndarray, y: np.ndarray) -> floating[Any]:
 
 sequence_features = []
 for f in (median, mean, std, _min, _max, _skew):
-    pf = partial(split, func=f, n=8)
+    pf = ft.partial(split, func=f, n=8)
     pf.__name__ = f.__name__ + '_split'
     sequence_features.append(pf)

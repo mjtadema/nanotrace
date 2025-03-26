@@ -132,6 +132,7 @@ class Segment(NodeMixin, PoolMixin, ReprMixin, PlotMixin):
                     break
 
             # else:
+            #TODO  must swap joblib backend with "multiprocess" as it can serialize decorated functions
             #     # Optimization: Generate new segments in parallel
             #     # Works best with generating many small segments
             #     for seg in Parallel(n_jobs=1)(delayed(Segment)(

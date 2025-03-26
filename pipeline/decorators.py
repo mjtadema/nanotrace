@@ -15,7 +15,9 @@ limitations under the License.
 """
 
 import logging
+import sys
 from functools import wraps
+from pickle import whichmodule, _getattribute
 from typing import Callable, Any, Generator
 
 import numpy as np
@@ -46,7 +48,6 @@ def catch_errors(n=1) -> Callable:
 def partial(f: Callable) -> Callable:
     """Decorate a function so that the first call saves the arguments in a closure"""
 
-    @wraps(f)
     def closure(*p_args, **p_kwargs) -> Callable:
         @wraps(f)
         def wrapper(*args, **kwargs) -> Any:
