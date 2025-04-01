@@ -17,13 +17,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import re
+
 import numpy as np
-from dtw import dtw
+from joblib import wrap_non_picklable_objects
+
+try:
+    from dtw import dtw
+except ImportError:
+    dtw = None
+from pyabf import ABF
 from scipy.signal import resample, fftconvolve
 
 from .decorators import partial
 
-
+@wrap_non_picklable_objects
 @partial
 def shapelet(t, y, *, shapelet, include=True, mindist=5, n_resample=1000):
     """
@@ -57,7 +65,7 @@ def shapelet(t, y, *, shapelet, include=True, mindist=5, n_resample=1000):
         else:
             yield t[index[-1]:], y[index[-1]:]
 
-
+@wrap_non_picklable_objects
 @partial
 def normalize(t, y, threshold=0, nbins=5):
     # if threshold is a float between 0 and 1,
@@ -84,3 +92,32 @@ def normalize(t, y, threshold=0, nbins=5):
 
     norm = (y - normmin) / (normmax - normmin)
     yield t, norm
+
+@wrap_non_picklable_objects
+@partial
+def by_tag(t: np.ndarray, y: np.ndarray, *, abf: ABF, pattern: str):
+    """
+    Segment a gapfree trace by tags matching a pattern.
+    NOTE: must be used as the first stage otherwise the tag times don't make sense.
+
+    :param t: time
+    :param y: current
+    :param abf: abf file
+    :param pattern: regex pattern
+    :return: tuple(time,current)
+    """
+    tags = abf.tagComments
+    times = abf.tagTimesSec
+    fs = abf.sampleRate
+
+    matching = np.array([i for i, t in enumerate(tags) if re.search(pattern, t) is not None])
+    if len(matching) == 0:
+        # If the tag is not found, simply don't yield anything
+        return
+
+    i = np.asarray([*np.array(times) * fs, -1]).astype(int)
+    start = np.arange(len(times))[matching]
+    end = start + 1
+
+    for s, e in zip(i[start], i[end]):
+        yield t[s:e], y[s:e]

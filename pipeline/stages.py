@@ -225,7 +225,10 @@ def volt(c, v):
     :param v: (float) target voltage
     :return: function that slices the sweep
     """
-    start, end = np.arange(len(c))[np.diff(c == v, append=0) != 0]
+    try:
+        start, end = np.arange(len(c))[np.diff(c == v, append=0) != 0]
+    except ValueError:
+        return
 
     @wraps(volt)
     def cached(t, y):

@@ -46,7 +46,6 @@ def catch_errors(n=1) -> Callable:
 def partial(f: Callable) -> Callable:
     """Decorate a function so that the first call saves the arguments in a closure"""
 
-    @wraps(f)
     def closure(*p_args, **p_kwargs) -> Callable:
         @wraps(f)
         def wrapper(*args, **kwargs) -> Any:
