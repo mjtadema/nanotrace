@@ -1,7 +1,7 @@
 """
 author: Matthijs Tadema
 
-Pipeline:
+PopePipe:
 ---------
 `porepipe` is a python library for automated nanopore electrophysiology (1d timeseries)
 manipulation and feature extraction. The central class is the `Pipeline` class, imported from the main module:

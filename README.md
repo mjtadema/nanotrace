@@ -1,6 +1,6 @@
-# Pipeline
+# PorePipe
 
-`pipeline` is a python library for automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction.
+`porepipe` is a python library for automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction.
 
 This guide will cover the following topics:
 
@@ -19,7 +19,7 @@ This guide will cover the following topics:
 3. [Install Anaconda or miniconda](https://www.anaconda.com/docs/getting-started/anaconda/install#windows-installation)
 4. Create a virtual environment that you want to use for 
 5. Open the Anaconda cmd prompt **from the correct environment**
-6. Run the following command: `pip install git+https://github.com/mjtadema/pipeline.git`
+6. Run the following command: `pip install git+https://github.com/mjtadema/porepipe.git`
 
 ### <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/brands/linux.svg" height="20" style="vertical-align: middle;"> <span style="vertical-align: middle;">Linux</span>
 2. Install git from whatever software repository you use (i.e. `sudo apt install git` for ubuntu/debian)
@@ -28,12 +28,12 @@ This guide will cover the following topics:
 5. Activate the virtual environment: `$ . venv/bin/activate`
 
 ### All platforms
-7. Install the module from the private repo: `pip install git+https://github.com/mjtadema/pipeline.git`
+7. Install the module from the private repo: `pip install git+https://github.com/mjtadema/porepipe.git`
 
 ## Updating
-Update using the latest development version **(Recommended)**: `pip install --upgrade --force-reinstall --no-deps git+https://github.com/mjtadema/pipeline.git`
+Update using the latest development version **(Recommended)**: `pip install --upgrade --force-reinstall --no-deps git+https://github.com/mjtadema/porepipe.git`
 
-Update using the latest stable version: `pip install --upgrade --force-reinstall --no-deps git+https://github.com/mjtadema/pipeline.git@master`
+Update using the latest stable version: `pip install --upgrade --force-reinstall --no-deps git+https://github.com/mjtadema/porepipe.git@master`
 
 ## Usage
 The pipeline is defined and used through the [Pipeline object](#pipeline-design). As a convention, class names use what is known as "CamelCase", while other variables use_this_style_of_naming. Available pipeline stages can be found [here](#available-stages).
