@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pipeline import *
 from pipeline.stages import *
-from pipeline.extractors import freq_by_power, global_features
+from pipeline.extractors import psd_freq, global_features
 from functools import partial
 
 @pytest.fixture
@@ -14,7 +14,7 @@ def abf_blood():
 @pytest.fixture
 def pipe_blood(abf_blood):
     fs = abf_blood.sampleRate
-    freq = partial(freq_by_power, n=8, fs=fs)
+    freq = partial(psd_freq, n=8, fs=fs)
     freq.__name__ = "freq"
     pipe = Pipeline(
         volt(abf_blood.sweepC, 20.0),
@@ -29,7 +29,7 @@ def pipe_blood(abf_blood):
     return pipe
 
 def test_blood(pipe_blood, abf_blood):
-    assert len(pipe_blood(abf_blood, njobs=4).features) > 0
+    assert len(pipe_blood(abf_blood, n_jobs=4).features) > 0
 
 def test_sublevels():
     abf = ABF("test/test_sublevels.abf")
