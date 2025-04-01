@@ -1,9 +1,9 @@
 from pathlib import Path
 
 import pytest
-from pipeline import *
-from pipeline.stages import *
-from pipeline.extractors import psd_freq, global_features
+from porepipe import *
+from porepipe.stages import *
+from porepipe.extractors import psd_freq, global_features
 from functools import partial
 
 @pytest.fixture

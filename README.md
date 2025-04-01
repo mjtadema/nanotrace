@@ -39,13 +39,14 @@ Update using the latest stable version: `pip install --upgrade --force-reinstall
 The pipeline is defined and used through the [Pipeline object](#pipeline-design). As a convention, class names use what is known as "CamelCase", while other variables use_this_style_of_naming. Available pipeline stages can be found [here](#available-stages).
 
 ### Pipeline definition
+
 ```python
 # Example:
-import Pipeline from pipeline
-from pipeline.stages import *
-import pipeline
+import Pipeline from porepipe
+from porepipe.stages import *
+import porepipe
 
-help(pipeline.stages)
+help(porepipe.stages)
 
 pipeline = Pipeline(
     stage_1,
@@ -114,7 +115,7 @@ Pipeline(
 Extra options can be given when the pipeline is defined by using the `partial` decorator when defining the function like so:
 
 ```python
-from pipeline.decorators import partial
+from porepipe.decorators import partial
 
 @partial
 def new_stage(t,y,*,extra_argument):
@@ -133,7 +134,7 @@ Pipeline(
 The `cutoff` decorator is used on a many built-in stages to filter out segments that are too short. It can be added to a custom stage like so:
 
 ```python
-from pipeline.decorators import cutoff
+from porepipe.decorators import cutoff
 
 @cutoff
 def new_stage(t,y):

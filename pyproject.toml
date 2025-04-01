@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pipeline"
-version = "0.0.1.6"
+name = "porepipe"
+version = "0.0.1.7"
 authors = [
   { name="Matthijs Tadema", email="m.j.tadema@rug.nl" },
 ]
@@ -31,5 +31,5 @@ dependencies = [
 
 
 [project.urls]
-Homepage = "https://github.com/mjtadema/pipeline"
-Issues = "https://github.com/mjtadema/pipeline/issues"
+Homepage = "https://github.com/mjtadema/porepipe"
+Issues = "https://github.com/mjtadema/porepipe/issues"
