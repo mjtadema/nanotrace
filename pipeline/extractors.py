@@ -43,6 +43,7 @@ logger = logging.getLogger(__name__)
 
 
 # Global features
+
 @catch_errors()
 def mean(t: np.ndarray, y: np.ndarray) -> floating[Any]:
     return np.mean(y)
@@ -92,7 +93,7 @@ global_features = [mean, std, ldt, median, _skew, kurt, clst_means]
 
 
 # Frequency features
-# TODO this should be done in a nice way _without_ the partial decorator
+
 @partial
 def psd_freq(t: np.ndarray, y: np.ndarray, *, n=8, fs: int) -> np.ndarray:
     """
