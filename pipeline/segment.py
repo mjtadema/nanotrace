@@ -21,7 +21,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from anytree import NodeMixin, Resolver, LevelOrderGroupIter
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, wrap_non_picklable_objects
 from tqdm.asyncio import tqdm
 
 from .plot import PlotMixin

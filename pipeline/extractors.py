@@ -32,7 +32,6 @@ import functools as ft
 from typing import Any
 
 import numpy as np
-from joblib import wrap_non_picklable_objects
 from numpy import floating
 from scipy.signal import welch, periodogram
 from scipy.stats import gaussian_kde, skew, kurtosis
