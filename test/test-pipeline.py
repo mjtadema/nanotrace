@@ -24,7 +24,7 @@ def pipe_blood(abf_blood):
         threshold(lo=0.0, hi=0.8, cutoff=1e-3 * fs),
         trim(left=1e-4 * fs, right=1e-4 * fs),
         extractors=(*global_features, freq),
-        nsegments=10
+        n_segments=10
     )
     return pipe
 
@@ -41,7 +41,7 @@ def test_sublevels():
         trim(left=0.1 * fs, right=0.1 * fs),
         levels(n=2),
         extractors=global_features,
-        nsegments=10
+        n_segments=10
     )
     pipe(abf).events[0].y = np.array([])
     assert len(pipe(abf).features) > 0
