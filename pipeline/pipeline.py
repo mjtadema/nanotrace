@@ -62,7 +62,7 @@ class Pipeline:
     def __repr__(self) -> str:
         return str(self)
 
-    def __call__(self, abf: ABFLike, njobs=1, gc=False, cache=True) -> Root:
+    def __call__(self, abf: ABFLike, n_jobs=1, gc=False, cache=True) -> Root:
         """
         When called with an abf file, construct a segment tree from its data and cache it.
         kwargs of the pipeline constructor are passed to the root of the tree
@@ -70,7 +70,7 @@ class Pipeline:
         :return: Root segment instance
         """
         # TODO this is a bit messy
-        self.njobs = njobs
+        self.n_jobs = n_jobs
         self.gc = gc
         abf = as_abf(abf)
         abfpath = Path(abf.abfFilePath)

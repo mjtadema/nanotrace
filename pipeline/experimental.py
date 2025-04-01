@@ -20,6 +20,8 @@ limitations under the License.
 import re
 
 import numpy as np
+from joblib import wrap_non_picklable_objects
+
 try:
     from dtw import dtw
 except ImportError:
@@ -29,7 +31,7 @@ from scipy.signal import resample, fftconvolve
 
 from .decorators import partial
 
-
+@wrap_non_picklable_objects
 @partial
 def shapelet(t, y, *, shapelet, include=True, mindist=5, n_resample=1000):
     """
@@ -63,7 +65,7 @@ def shapelet(t, y, *, shapelet, include=True, mindist=5, n_resample=1000):
         else:
             yield t[index[-1]:], y[index[-1]:]
 
-
+@wrap_non_picklable_objects
 @partial
 def normalize(t, y, threshold=0, nbins=5):
     # if threshold is a float between 0 and 1,
@@ -91,7 +93,7 @@ def normalize(t, y, threshold=0, nbins=5):
     norm = (y - normmin) / (normmax - normmin)
     yield t, norm
 
-
+@wrap_non_picklable_objects
 @partial
 def by_tag(t: np.ndarray, y: np.ndarray, *, abf: ABF, pattern: str):
     """

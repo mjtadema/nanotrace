@@ -15,9 +15,7 @@ limitations under the License.
 """
 
 import logging
-import sys
 from functools import wraps
-from pickle import whichmodule, _getattribute
 from typing import Callable, Any, Generator
 
 import numpy as np

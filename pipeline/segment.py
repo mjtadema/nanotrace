@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import gc
 import logging
 from typing import Any
 
@@ -83,16 +84,16 @@ class Segment(NodeMixin, PoolMixin, ReprMixin, PlotMixin):
 
     # "Inherit" these properties from the root node
     @property
-    def nsegments(self):
-        return self.root.nsegments
+    def n_segments(self):
+        return self.root.n_segments
 
     @property
     def gc(self):
         return self.root.gc
 
     @property
-    def njobs(self):
-        return self.root.njobs
+    def n_jobs(self):
+        return self.root.n_jobs
 
     @NodeMixin.children.getter
     def children(self):
@@ -122,20 +123,19 @@ class Segment(NodeMixin, PoolMixin, ReprMixin, PlotMixin):
         If not, we can use Parallel to derive children more efficiently.
         """
         if self.stage is not None:
-            logger.debug("Segmenting with %s", self.stage.__name__)
+            # logger.debug("Segmenting with %s", self.stage.__name__)
             # if self.nsegments > 0:
-            # logger.info(f"Only generating {self.nsegments}")
+            logger.info(f"Only generating {self.n_segments}")
             for i, (t, y, *l) in enumerate(self.stage(self.t, self.y)):
                 seg = Segment(t, y, l, stages=self.residual, name=self.stage.__name__)
                 seg.parent = self
-                if i == self.nsegments:
+                if i == self.n_segments:
                     break
-
+            #
             # else:
-            #TODO  must swap joblib backend with "multiprocess" as it can serialize decorated functions
             #     # Optimization: Generate new segments in parallel
             #     # Works best with generating many small segments
-            #     for seg in Parallel(n_jobs=1)(delayed(Segment)(
+            #     for seg in Parallel(n_jobs=self.root.n_jobs)(delayed(Segment)(
             #             t,y,l, stages=self.residual, name=self.stage.__name__
             #     ) for t,y,*l in self.stage(self.t, self.y)):
             #         seg.parent = self
@@ -152,7 +152,7 @@ class Root(NodeMixin, PoolMixin):
     As the main interface to the tree, Root implements some convenience functions and properties:
     """
 
-    def __init__(self, stages, *, nsegments=-1, extractors=None, columns=None, pipe=None) -> None:
+    def __init__(self, stages, *, n_segments=-1, extractors=None, columns=None, pipe=None) -> None:
         """
         Root constructor takes an abf file and a pipeline of refi
         :param pipeline: a list of functions acting as pipeline stages
@@ -170,7 +170,7 @@ class Root(NodeMixin, PoolMixin):
         self.extractors = extractors
         self.columns = columns
         self.stages = stages
-        self.nsegments = nsegments
+        self.n_segments = n_segments
 
     def __getitem__(self, item) -> Any:
         if isinstance(item, int):
@@ -185,8 +185,8 @@ class Root(NodeMixin, PoolMixin):
             raise TypeError("item must be either str or int, is %s", type(item))
 
     @property
-    def njobs(self) -> int:
-        return self.pipe.njobs
+    def n_jobs(self) -> int:
+        return self.pipe.n_jobs
 
     @property
     def gc(self) -> bool:
@@ -204,11 +204,9 @@ class Root(NodeMixin, PoolMixin):
             # Optimization: calculate features for events in parallel ahead of time
             features = []
             cols = []
-            if self.njobs > 1:
-                logger.warning("njobs > 1 does not work with decorated extractors")
             for extractor in self.extractors:
-                extracted = Parallel(n_jobs=self.njobs, backend='multiprocessing')(
-                    delayed(extractor)(event.t, event.y)
+                extracted = Parallel(n_jobs=self.n_jobs)(
+                    delayed(wrap_non_picklable_objects(extractor))(event.t, event.y)
                     for event in tqdm(self.events, desc="extracting features %s" % extractor.__name__)
                 )
                 logger.debug(f"{len(extracted)=}")

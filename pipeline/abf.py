@@ -45,7 +45,7 @@ class AbfRoot(Root, ReprMixin):
                     name='sweep', parent=self
                 )
             )
-            if 0 < self.nsegments <= i:
+            if 0 < self.n_segments <= i:
                 break
 
     def __str__(self) -> str:
