@@ -215,6 +215,8 @@ def levels(t, y, *, n, tol=0, sortby='mean'):
         yield t[s:e], y[
                       s:e], l  # This is the way to smuggle out extra information without having access to the segment yet
 
+# TODO properly implement porepipe exception classes
+class StageError(Exception): pass
 
 def volt(c, v):
     """
@@ -227,8 +229,8 @@ def volt(c, v):
     """
     try:
         start, end = np.arange(len(c))[np.diff(c == v, append=0) != 0]
-    except ValueError:
-        return
+    except ValueError as e:
+        raise StageError("volt not in control voltage array") from e
 
     @wraps(volt)
     def cached(t, y):
