@@ -230,11 +230,11 @@ class Root(NodeMixin, PoolMixin):
 
     @property
     @requires_children
-    def by_index(self) -> list[list[Segment]]:
+    def by_index(self) -> np.ndarray:
         """
         returns a list of nodes grouped by level
         """
-        return list(LevelOrderGroupIter(self))
+        return np.array(list(LevelOrderGroupIter(self)))
 
     @property
     @requires_children
