@@ -106,16 +106,16 @@ class Segment(NodeMixin, PoolMixin, ReprMixin, PlotMixin):
 
     @property
     @requires_children
-    def by_index(self) -> list[tuple[object]]:
+    def by_index(self) -> list[Any]:
         """
         returns a list of nodes grouped by level
         """
         return list(LevelOrderGroupIter(self))
 
     @property
-    def events(self) -> tuple[object]:
+    def events(self) -> np.ndarray:
         """Return segments from the lowest level"""
-        return self.by_index[-1]
+        return np.asarray(self.by_index[-1])
 
     def derive_children(self):
         """
@@ -240,11 +240,11 @@ class Root(NodeMixin, PoolMixin):
 
     @property
     @requires_children
-    def by_index(self) -> np.ndarray:
+    def by_index(self) -> list[Any]:
         """
         returns a list of nodes grouped by level
         """
-        return np.array(list(LevelOrderGroupIter(self)))
+        return list(LevelOrderGroupIter(self))
 
     @property
     @requires_children
