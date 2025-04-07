@@ -130,9 +130,9 @@ def lowpass(t, y, *, cutoff_fq, fs, order=10):
 
 
 @partial
-def as_ires(t, y, minsamples=1000):
+def as_ires(t, y, max_amplitude=200, minsamples=1000):
     """Calculate Ires using an automatic baseline calculation"""
-    yield t, y / baseline(y, minsamples)
+    yield t, y / baseline(y, minsamples, max_amplitude=max_amplitude)
 
 
 @partial
