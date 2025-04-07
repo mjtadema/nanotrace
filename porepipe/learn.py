@@ -32,8 +32,9 @@ ocsvm_params = {
 Estimator = type("Estimator", (), {"fit": None})
 Predictor = type("Predictor", (), {"decision_function": None})
 
-def gridSearchCVOCSVM(estimator: Estimator,
-                      Xpos: pd.DataFrame, cv=5, **kwargs) -> Predictor:
+def gridSearchCVOneClass(estimator: Estimator,
+                      Xpos: pd.DataFrame, *, param_grid,
+                      cv=5, scoring='recall', refit=True, **kwargs) -> Predictor:
     """
     Search a grid of parameter combinations for a given estimator.
     Requires the estimator to be a OneClassSVM or at least a Pipeline with
@@ -45,18 +46,18 @@ def gridSearchCVOCSVM(estimator: Estimator,
     :param kwargs: Additional kwargs get passed to GridSearchCV
     :return: optimized predictor
     """
-    search = GridSearchCV(estimator, param_grid=ocsvm_params,
-                          scoring='recall', cv=cv, refit=True, **kwargs)
+    search = GridSearchCV(estimator, param_grid=param_grid,
+                          scoring=scoring, cv=cv, refit=refit, **kwargs)
     # Train this only on the positive samples
     search.fit(Xpos, np.repeat(1.0, len(Xpos)))
     return search
 
 
-class TunedOneClassSVM:
+class TunedOneClass:
     """
 
     """
-    def __init__(self, predictor: Predictor) -> None:
+    def __init__(self, predictor: Predictor, scoring=accuracy_score) -> None:
         """
         Initialized the tuner with a predictor.
         Usually OneClassSVM or a Pipeline that was already pre trained.
@@ -64,6 +65,7 @@ class TunedOneClassSVM:
         :param predictor: trained predictor
         """
         self.predictor = predictor
+        self.scorer = scoring
         self._threshold = None
         self.cv_results_ = None
 
@@ -78,7 +80,7 @@ class TunedOneClassSVM:
 
         def f(x):
             y_pred = np.where(self.predictor.decision_function(X) > x, 1.0, -1.0)
-            return 1 - accuracy_score(y, y_pred)
+            return 1 - self.scorer(y, y_pred)
 
         t = minimize_scalar(f, bounds=(dec.min(), dec.max())).x
         self._threshold = t
