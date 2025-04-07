@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 from anytree import NodeMixin, Resolver, LevelOrderGroupIter
 from joblib import Parallel, delayed, wrap_non_picklable_objects
+from matplotlib import pyplot as plt
 from tqdm.asyncio import tqdm
 
 from .plot import PlotMixin
@@ -145,6 +146,15 @@ class Segment(NodeMixin, PoolMixin, ReprMixin, PlotMixin):
             #         self.t = []
             #         self.y = []
             #         gc.collect()
+
+    def plot(self, fmt='', no_time=False, **kwargs):
+        """Plot the time vs current of this segment"""
+        if no_time:
+            x = np.linspace(0,1, len(self.t))
+        else:
+            x = self.t
+        y = self.y
+        plt.plot(x=x, y=y, fmt=fmt, data=self,**kwargs)
 
 
 class Root(NodeMixin, PoolMixin):
