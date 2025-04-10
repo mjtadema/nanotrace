@@ -146,5 +146,5 @@ def new_stage(t,y):
         yield new_t, new_y
 ```
 
-## Extractors
+## Features
 **coming soon**
