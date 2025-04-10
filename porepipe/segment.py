@@ -154,7 +154,7 @@ class Segment(NodeMixin, PoolMixin, ReprMixin, PlotMixin):
         else:
             x = self.t
         y = self.y
-        plt.plot(x=x, y=y, fmt=fmt, data=self,**kwargs)
+        plt.plot(x, y, fmt=fmt, data=self,**kwargs)
 
 
 class Root(NodeMixin, PoolMixin):
