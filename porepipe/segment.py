@@ -163,7 +163,7 @@ class Root(NodeMixin, PoolMixin):
     As the main interface to the tree, Root implements some convenience functions and properties:
     """
 
-    def __init__(self, stages, *, n_segments=-1, extractors=None, columns=None, pipe=None) -> None:
+    def __init__(self, stages, *, n_segments=-1, features=None, post=None, columns=None, pipe=None) -> None:
         """
         Root constructor takes an abf file and a pipeline of refi
         :param pipeline: a list of functions acting as pipeline stages
@@ -176,9 +176,9 @@ class Root(NodeMixin, PoolMixin):
         self._features = None  # Cache features
 
         self.pipe = pipe
-        if extractors is None:
-            extractors = []
-        self.extractors = extractors
+        if features is None:
+            features = []
+        self.extractors = features
         self.columns = columns
         self.stages = stages
         self.n_segments = n_segments
