@@ -23,7 +23,7 @@ def pipe_blood(abf_blood):
         as_ires(),
         threshold(lo=0.0, hi=0.8, cutoff=1e-3 * fs),
         trim(left=1e-4 * fs, right=1e-4 * fs),
-        extractors=(*global_features, freq),
+        features=(*global_features, freq),
         n_segments=10
     )
     return pipe
@@ -40,7 +40,7 @@ def test_sublevels():
         threshold(lo=0.5, hi=0.6, cutoff=1e-1 * fs, tol=0),
         trim(left=0.1 * fs, right=0.1 * fs),
         levels(n=2),
-        extractors=global_features,
+        features=global_features,
         n_segments=10
     )
     pipe(abf).events[0].y = np.array([])
