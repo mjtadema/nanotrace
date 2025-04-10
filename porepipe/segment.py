@@ -181,6 +181,7 @@ class Root(NodeMixin, PoolMixin):
         self.extractors = features
         self.columns = columns
         self.stages = stages
+        self.post = post
         self.n_segments = n_segments
 
     def __getitem__(self, item) -> Any:
@@ -212,13 +213,13 @@ class Root(NodeMixin, PoolMixin):
         # TODO this needs some refactoring
         # Cache features
         if self._features is None:
-            # Optimization: calculate features for events in parallel ahead of time
+            # Optimization: calculate features for events in parallel in one go
             features = []
             cols = []
             for extractor in self.extractors:
                 extracted = Parallel(n_jobs=self.n_jobs)(
                     delayed(wrap_non_picklable_objects(extractor))(event.t, event.y)
-                    for event in tqdm(self.events, desc="extracting features %s" % extractor.__name__)
+                    for event in tqdm(np.asarray(self.by_index[-1]), desc="extracting features %s" % extractor.__name__)
                 )
                 logger.debug(f"{len(extracted)=}")
                 extracted = np.array(extracted)
@@ -226,10 +227,11 @@ class Root(NodeMixin, PoolMixin):
                     extracted = extracted[..., None]
                 features.append(extracted)
                 cols.extend([extractor.__name__ + '_%d' % i for i in range(extracted.shape[-1])])
-            if self.events[0].l is not None:
+            # This used to use self.events, but that causes infinite recursion since that one uses these features now
+            if np.asarray(self.by_index[-1])[0].l is not None:
                 cols.append("label")
                 labels = []
-                for event in self.events:
+                for event in np.asarray(self.by_index[-1]):
                     labels.append(event.l)
                 features.append(labels)
             if not self.columns is None:
@@ -262,6 +264,8 @@ class Root(NodeMixin, PoolMixin):
 
     @property
     @requires_children
-    def events(self) -> list[Segment]:
+    def events(self) -> np.ndarray:
         """Return segments from the lowest level"""
-        return self.by_index[-1]
+        if not self.post is None:
+            return np.asarray(self.by_index[-1])[self.post(self.features)]
+        return np.asarray(self.by_index[-1])
