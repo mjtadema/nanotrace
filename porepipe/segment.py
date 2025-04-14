@@ -15,56 +15,40 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import gc
 import logging
-from typing import Any
+from functools import wraps
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
-from anytree import NodeMixin, Resolver, LevelOrderGroupIter
+from anytree import NodeMixin, Resolver, LevelOrderGroupIter, RenderTree
 from joblib import Parallel, delayed, wrap_non_picklable_objects
 from matplotlib import pyplot as plt
-from tqdm.asyncio import tqdm
+from pyabf import abfWriter
+from tqdm.auto import tqdm
 
-from .plot import PlotMixin
-from .decorators import requires_children
-from .utils import PoolMixin, ReprMixin
+from .exception import RootError
 
 logger = logging.getLogger(__name__)
 
 name_resolver = Resolver('name')
 
 
-class Segment(NodeMixin, PoolMixin, ReprMixin, PlotMixin):
+class Node(NodeMixin):
     """
-    Segments make up the nodes and leaves of the tree.
-    Segments have parent segments and child segments.
+    Generic tree node class with specific stuff for porepipe.
     """
-
-    def __init__(
-            self, t: np.ndarray, y: np.ndarray, l: list, stages: list, *,
-            name=None, parent=None
-    ):
+    def __init__(self, stages: list, *, name=None, parent=None):
         """
-        :param t: array of time
-        :param y: array of current
-        :param l: list of additional labels passed upon segment initialization
+        Initialize a node
+
         :param stages: list of pipeline stages
-        :param nsegments: number of segments to generate, useful for testing. (default: -1 means generate all segments)
         :param name: str, name usually set to the value of __name__ of the refiner callable that generated the segment
         :param parent: parent Segment
-        :param gc: garbage collect (default: False)
         """
-        self.t = t
-        self.y = y
-        if len(l) > 0:
-            self.l = l
-        else:
-            self.l = None
-        self.parent = parent
+        self.stages = stages
         self.name = name
-        self._root = None
-        # TODO this could be simplified by simply taking parent.stages[1:] for each subsequent stage
+        self.parent = parent
 
         # Consume part of the pipeline stages
         logger.debug(f"{stages=}")
@@ -77,6 +61,179 @@ class Segment(NodeMixin, PoolMixin, ReprMixin, PlotMixin):
             self.residual = []
         logger.debug(f"{self.stage=}, {self.residual=}")
 
+    def __repr__(self):
+        """Fancy tree rendering"""
+        out = []
+        render = iter(RenderTree(self))
+        prev = None
+        for pre, _, node in render:
+            cnt = 0
+            while prev == pre:
+                # skip until we encounter next level
+                pre, _, node = next(render)
+                cnt += 1
+            else:
+                if cnt > 0:
+                    out.append("%s ... Skipped %d segments" % (prev, cnt))
+            out.append("%s%s" % (pre, str(node)))
+            prev = pre
+        return '\n'.join(out)
+
+
+def requires_children(f: Callable) -> Callable:
+    """
+    Used in root nodes to generate children before they are accessed.
+    """
+
+    @wraps(f)
+    def wrapper(self, *args, **kwargs) -> Any:
+        if not self.children:
+            # Generate the tree
+            self.derive_children()
+        return f(self, *args, **kwargs)
+
+    return wrapper
+
+
+class Root(Node):
+    """
+    Special node that acts as the interface to the pipeline, and the root of the tree of segments.
+    As the main interface to the tree, Root implements some convenience functions and properties.
+    Root takes care of calculating features over all events.
+    """
+    def __init__(self, *args, pipeline, n_segments=-1, features=None, post=None, **kwargs) -> None:
+        """
+        Root constructor only sets up generic pipeline stuff.
+        Specific roots that subclass this handle their specific tree setup.
+
+        :param pipeline: an instance of the Pipeline that constructed this tree
+
+        Optional parameters:
+        :param n_segments: number of segments to generate. Useful for pipeline development.
+        :param features: a list of extractors to extract features from events
+        :param post: an optional list of postprocessors to apply to the events
+        """
+        super().__init__(*args, **kwargs)
+        self._features = pd.DataFrame()
+
+        self.pipe = pipeline
+        if features is None:
+            features = []
+        self.extractors = features
+        self.post = post
+        self.n_segments = n_segments
+
+    @property
+    def n_jobs(self) -> int:
+        return self.pipe.n_jobs
+
+    @property
+    @requires_children
+    def by_index(self) -> list[Any]:
+        """
+        :return: a list of nodes grouped by level
+        """
+        return list(LevelOrderGroupIter(self))
+
+    @property
+    @requires_children
+    def events(self) -> np.ndarray:
+        """
+        :return: segments from the lowest level as array
+        """
+        events = np.asarray(self.by_index[-1])
+        if not self.post is None:
+            return events[self.post(self.features)]
+        return events
+
+    @property
+    def features(self) -> pd.DataFrame:
+        """
+        Extract features from all events (lowest level of the tree)
+        :return: dataframe of events of shape #events x #features
+        """
+        # Cache features
+        if self._features.empty:
+            # This used to use self.events, but that causes infinite recursion since that one uses these features now
+            events = np.asarray(self.by_index[-1])
+            # Doing it per extractor means we can parallelize efficiently
+            # but requires some more bookkeeping to restructure the dataframe
+            features = []
+            columns = []
+            for extractor in self.extractors:
+                # joblib.Parallel takes a generator
+                extracted = Parallel(n_jobs=self.n_jobs)(
+                    # That is called using joblib.delayed          with these arguments
+                    delayed(wrap_non_picklable_objects(extractor))(event.t, event.y)
+                    # For each event in this iterable
+                    for event in tqdm(events,           # by using tqdm in the generator we can monitor progress
+                        desc="extracting features %s" % extractor.__name__)
+                )
+                extracted = np.asarray(extracted)
+                if len(extracted.shape) > 1:
+                    columns.extend([extractor.__name__ + '_%d' % i for i in range(extracted.shape[-1])])
+                    features.extend([*extracted.T])
+                else:
+                    columns.append(extractor.__name__)
+                    features.append(extracted)
+
+
+            # if events have a label (event.l), add it to features
+            if events[0].l is not None:
+                columns.append("label")
+                labels = []
+                for event in events:
+                    labels.append(event.l)
+                features.append(labels)
+
+            # Create the dataframe, if there are no features return an empty dataframe
+            if len(features) > 0:
+                self._features = pd.DataFrame(np.vstack(features).T, columns=columns)
+
+        # Return cached features
+        return self._features
+
+    def write_abf(self, filename: str, *, fs=None) -> None:
+        """
+        Write events as sweeps to an ABF v1 file
+        :param filename: filename to write to
+        :return:
+        """
+        if not fs:
+            try:
+                fs = self.fs
+            except AttributeError:
+                raise RootError("write_abf requires a sample rate")
+        maxlen = max([len(event.y) for event in self.events])
+        sweeps = []
+        for event in self.events:
+            padlen = maxlen - len(event.y)
+            sweeps.append(np.pad(event.y, (0, padlen), mode='constant', constant_values=0))
+        logger.debug("Writing %d sweeps to %s", len(sweeps), filename)
+        abfWriter.writeABF1(np.asarray(sweeps), filename, sampleRateHz=fs)
+
+
+class Segment(Node):
+    """
+    Segments make up the nodes and leaves of the tree.
+    Segments have parent segments and child segments.
+    Segments take care of generating events.
+    """
+
+    def __init__(self, t: np.ndarray, y: np.ndarray, l: list, *args, **kwargs):
+        """
+        :param t: array of time
+        :param y: array of current
+        :param l: list of additional labels passed upon segment initialization
+        """
+        self.t = t
+        self.y = y
+        if len(l) > 0:
+            self.l = l
+        else:
+            self.l = None
+        super().__init__(*args, **kwargs)
+
     def __str__(self):
         return "Segment(%s) with %d datapoints" % (self.name, len(self.y))
 
@@ -86,24 +243,12 @@ class Segment(NodeMixin, PoolMixin, ReprMixin, PlotMixin):
 
     # "Inherit" these properties from the root node
     @property
-    def n_segments(self):
-        return self.root.n_segments
-
-    @property
-    def gc(self):
-        return self.root.gc
-
-    @property
     def n_jobs(self):
         return self.root.n_jobs
 
-    @NodeMixin.children.getter
-    def children(self):
-        """Lazily run self._refine if there are no children"""
-        if not NodeMixin.children.fget(self):
-            self.derive_children()
-        return NodeMixin.children.fget(self)
-    # TODO property for events
+    @property
+    def n_segments(self):
+        return self.root.n_segments
 
     @property
     @requires_children
@@ -113,40 +258,26 @@ class Segment(NodeMixin, PoolMixin, ReprMixin, PlotMixin):
         """
         return list(LevelOrderGroupIter(self))
 
-    @property
-    def events(self) -> np.ndarray:
-        """Return segments from the lowest level"""
-        return np.asarray(self.by_index[-1])
+    @NodeMixin.children.getter
+    def children(self):
+        """Lazily run self._run_stage if there are no children"""
+        if not NodeMixin.children.fget(self):
+            self._run_stage()
+        return NodeMixin.children.fget(self)
 
-    def derive_children(self):
+    def _run_stage(self):
         """
         Run the stage to derive children.
-        Split in two possibilities: if the number of segments is specified we need to derive child segments in a loop.
-        If not, we can use Parallel to derive children more efficiently.
         """
         if self.stage is not None:
             # logger.debug("Segmenting with %s", self.stage.__name__)
-            # if self.nsegments > 0:
-            logger.info(f"Only generating {self.n_segments}")
+            if self.n_segments > 0:
+                logger.info(f"Generating {self.n_segments}")
             for i, (t, y, *l) in enumerate(self.stage(self.t, self.y)):
                 seg = Segment(t, y, l, stages=self.residual, name=self.stage.__name__)
                 seg.parent = self
                 if i == self.n_segments:
                     break
-            #
-            # else:
-            #TODO  must swap joblib backend with "multiprocess" as it can serialize decorated functions
-            #     # Optimization: Generate new segments in parallel
-            #     # Works best with generating many small segments
-            #     for seg in Parallel(n_jobs=self.root.n_jobs)(delayed(Segment)(
-            #             t,y,l, stages=self.residual, name=self.stage.__name__
-            #     ) for t,y,*l in self.stage(self.t, self.y)):
-            #         seg.parent = self
-            #     if self.gc:
-            #         # Unset the data arrays and run the garbage collector to save memory
-            #         self.t = []
-            #         self.y = []
-            #         gc.collect()
 
     def plot(self, fmt='', no_time=False, **kwargs):
         """Plot the time vs current of this segment"""
@@ -158,116 +289,17 @@ class Segment(NodeMixin, PoolMixin, ReprMixin, PlotMixin):
 
         plt.plot(x, y, fmt, data=self,**kwargs)
 
-
-class Root(NodeMixin, PoolMixin):
-    """
-    Special segment that acts as the interface to the pipeline, and the root of the tree of segments.
-    As the main interface to the tree, Root implements some convenience functions and properties:
-    """
-
-    def __init__(self, stages, *, n_segments=-1, features=None, post=None, columns=None, pipe=None) -> None:
+    def write_abf(self, filename: str, *, fs=None) -> None:
         """
-        Root constructor takes an abf file and a pipeline of refi
-        :param pipeline: a list of functions acting as pipeline stages
-        :param extractors: a list of extractors to extract features from events
-        :param columns: a list of column names to add to the features dataframe
-        :param abf:
-        :param gc: bool, garbage collect (default: False)
-        :param njobs: number of jobs to run in parallel
+        Write events as sweeps to an ABF v1 file
+        :param filename: filename to write to
+        :return:
         """
-        self._features = None  # Cache features
+        if not fs:
+            try:
+                fs = self.fs
+            except AttributeError:
+                raise RootError("write_abf requires a sample rate")
+        logger.debug("Writing %d datapoints to %s", len(self.y), filename)
+        abfWriter.writeABF1(self.y, filename, sampleRateHz=fs)
 
-        self.pipe = pipe
-        if features is None:
-            features = []
-        self.extractors = features
-        self.columns = columns
-        self.stages = stages
-        self.post = post
-        self.n_segments = n_segments
-
-    def __getitem__(self, item) -> Any:
-        if isinstance(item, int):
-            return self.by_index[item]
-        elif isinstance(item, str):
-            # Makes Root usable as a key addressable object
-            if hasattr(self, item):
-                return getattr(self, item)
-            else:
-                return self.by_name[item]
-        else:
-            raise TypeError("item must be either str or int, is %s", type(item))
-
-    @property
-    def n_jobs(self) -> int:
-        return self.pipe.n_jobs
-
-    @property
-    def gc(self) -> bool:
-        return self.pipe.gc
-
-    @property
-    @requires_children
-    def features(self) -> pd.DataFrame:
-        """
-        Centrally extract features from events so that we can pool them and extract in parallel
-        """
-        # TODO this needs some refactoring
-        # Cache features
-        if self._features is None:
-            # Optimization: calculate features for events in parallel in one go
-            features = []
-            cols = []
-            for extractor in self.extractors:
-                extracted = Parallel(n_jobs=self.n_jobs)(
-                    delayed(wrap_non_picklable_objects(extractor))(event.t, event.y)
-                    for event in tqdm(np.asarray(self.by_index[-1]), desc="extracting features %s" % extractor.__name__)
-                )
-                logger.debug(f"{len(extracted)=}")
-                extracted = np.array(extracted)
-                if len(extracted.shape) == 1:
-                    extracted = extracted[..., None]
-                features.append(extracted)
-                cols.extend([extractor.__name__ + '_%d' % i for i in range(extracted.shape[-1])])
-            # This used to use self.events, but that causes infinite recursion since that one uses these features now
-            if np.asarray(self.by_index[-1])[0].l is not None:
-                cols.append("label")
-                labels = []
-                for event in np.asarray(self.by_index[-1]):
-                    labels.append(event.l)
-                features.append(labels)
-            if not self.columns is None:
-                cols = self.columns
-            if len(features) > 0:
-                self._features = pd.DataFrame(np.hstack(features), columns=cols)
-        return self._features
-
-    @property
-    @requires_children
-    def by_index(self) -> list[Any]:
-        """
-        returns a list of nodes grouped by level
-        """
-        return list(LevelOrderGroupIter(self))
-
-    @property
-    @requires_children
-    def by_name(self) -> dict[str, tuple[Segment]]:
-        """
-        :return: a dict of tuples containing nodes grouped by stage
-        """
-        return {
-            (stage.__name__ if callable(stage) else stage): level
-            for stage, level in zip(
-                ['root', 'sweep', *self.stages],
-                LevelOrderGroupIter(self)
-            )
-        }
-
-    @property
-    @requires_children
-    def events(self) -> np.ndarray:
-        """Return segments from the lowest level"""
-        if not self.post is None:
-            return np.asarray(self.by_index[-1])[self.post(self.features)]
-        return np.asarray(self.by_index[-1])
