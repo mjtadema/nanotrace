@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Implement built-in feature extractors.
 Three main classes:
