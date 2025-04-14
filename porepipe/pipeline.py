@@ -17,7 +17,7 @@ limitations under the License.
 import logging
 from pathlib import Path
 
-from exception import PorePipeException
+from .exception import PorePipeException
 from .segment import Root
 from .abf import ABFLike, as_abf, AbfRoot, ABFLikeTypes
 
