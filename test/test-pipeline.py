@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from porepipe import *
 from porepipe.stages import *
-from porepipe.extractors import psd_freq, global_features
+from porepipe.features import psd_freq, global_features
 from functools import partial
 
 @pytest.fixture
@@ -15,8 +15,6 @@ def abf_blood():
 @pytest.fixture
 def pipe_blood(abf_blood):
     fs = abf_blood.sampleRate
-    freq = partial(psd_freq, n=8, fs=fs)
-    freq.__name__ = "freq"
     pipe = Pipeline(
         volt(abf_blood.sweepC, 20.0),
         lowpass(cutoff_fq=10e3, fs=fs),
@@ -24,13 +22,14 @@ def pipe_blood(abf_blood):
         as_ires(),
         threshold(lo=0.0, hi=0.8, cutoff=1e-3 * fs),
         trim(left=1e-4 * fs, right=1e-4 * fs),
-        features=(*global_features, freq),
-        n_segments=10
+        features=(*global_features, psd_freq(fs=fs)),
+        n_segments=10,
+        n_jobs=4
     )
     return pipe
 
 def test_blood(pipe_blood, abf_blood):
-    assert len(pipe_blood(abf_blood, n_jobs=4).features) > 0
+    assert len(pipe_blood(abf_blood).features) > 0
 
 def test_sublevels():
     abf = ABF("test/test_sublevels.abf")

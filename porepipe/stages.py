@@ -36,6 +36,9 @@ Currently implemented stages:
     and controls how much short spikes are tolerated. `sortby` controls how the gaussians
     are labeled, can be sorted by "mean" or by "weight" (weight being the height of the gaussian).
 
+ `volt(c, v)` :
+    Select a part of a trace where the voltage `v` matches the control voltage array `c`.
+
 Custom stages:
 --------------
     Each stage is a callable that takes _only_ a time array and a current array as positional arguments.
@@ -84,15 +87,57 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import re
 from functools import wraps
 
 import numpy as np
+from pyabf import ABF
 from scipy import signal
 from scipy.signal import find_peaks, fftconvolve
 from sklearn.mixture import GaussianMixture
 
 from .decorators import partial, cutoff
-from .utils import baseline, smooth_pred
+
+
+# Utilities
+def baseline(y, minsamples, max_amplitude=500) -> float:
+    """
+    Automatic baseline calculation
+    :param y: current array
+    :param minsamples: minimum number of samples that must be in the bin
+    :param max_amplitude: maximum amplitude to consider as baseline
+    :return: baseline
+    """
+    # Divide data into bins, with log spacing
+    # Get rid of the polarity in the calculation
+    nbins = 20
+    counts, edges = np.histogram(np.abs(y), bins=(np.logspace(0, 3, nbins)))
+    bins = np.array([a+b/2 for a,b in zip(edges[:-1], edges[1:])])
+    # Digitize based on the same bins
+    digi = np.digitize(np.abs(y), bins=edges)
+    # Determine highest bin over a certain threshold of samples
+    # to get rid of spikes
+    i = np.arange(len(counts))[(counts > minsamples) & (bins < max_amplitude)][-1] + 1
+    return np.median(y[digi == i])
+
+
+def smooth_pred(y, fit_, tol):
+    """
+    Smoothen a gaussian mixture prediction
+    """
+    # tol between 0 and 1?
+
+    if tol <= 0:
+        # Special case, do the regual prediction
+        return fit_.predict(y.reshape(-1, 1))
+    elif tol > 1:
+        tol = 1
+    proba = fit_.predict_proba(y.reshape(-1, 1))
+    klen = int((len(y) / 10) * tol)
+    kernel = np.full((klen, proba.shape[1]), 1 / klen)
+    pred = np.argmax(fftconvolve(proba, kernel, axes=0, mode='same'), axis=1)
+    return pred
+
 
 
 @partial
@@ -238,3 +283,33 @@ def volt(c, v):
         yield t[start:end], y[start:end]
 
     return cached
+
+
+@partial
+def by_tag(t: np.ndarray, y: np.ndarray, *, abf: ABF, pattern: str):
+    """
+    Segment a gapfree trace by tags matching a pattern.
+    NOTE: must be used as the first stage otherwise the tag times don't make sense.
+
+    :param t: time
+    :param y: current
+    :param abf: abf file
+    :param pattern: regex pattern
+    :return: tuple(time,current)
+    """
+    tags = abf.tagComments
+    times = abf.tagTimesSec
+    fs = abf.sampleRate
+
+    matching = np.array([i for i, t in enumerate(tags) if re.search(pattern, t) is not None])
+    if len(matching) == 0:
+        # If the tag is not found, simply don't yield anything
+        return
+
+    i = np.asarray([*np.array(times) * fs, -1]).astype(int)
+    start = np.arange(len(times))[matching]
+    end = start + 1
+
+    for s, e in zip(i[start], i[end]):
+        yield t[s:e], y[s:e]
+
