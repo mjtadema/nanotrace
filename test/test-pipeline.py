@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from porepipe import *
 from porepipe.stages import *
-from porepipe.extractors import psd_freq, global_features
+from porepipe.features import psd_freq, global_features
 from functools import partial
 
 @pytest.fixture
