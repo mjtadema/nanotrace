@@ -10,6 +10,7 @@ This guide will cover the following topics:
 3. [Usage example](#usage)
 4. [Available stages](#available-stages)
     1. [Custom stages](#defining-a-custom-stage)
+5. [Feature extraction](#features)
 
 ## Installation
 1. Ask **Matthijs** for an invite to the private github repository (it's private for now as I want to refine it a bit before I publish it).
@@ -19,7 +20,6 @@ This guide will cover the following topics:
 3. [Install Anaconda or miniconda](https://www.anaconda.com/docs/getting-started/anaconda/install#windows-installation)
 4. Create a virtual environment that you want to use for 
 5. Open the Anaconda cmd prompt **from the correct environment**
-6. Run the following command: `pip install git+https://github.com/mjtadema/porepipe.git`
 
 ### <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/brands/linux.svg" height="20" style="vertical-align: middle;"> <span style="vertical-align: middle;">Linux</span>
 2. Install git from whatever software repository you use (i.e. `sudo apt install git` for ubuntu/debian)
@@ -28,12 +28,12 @@ This guide will cover the following topics:
 5. Activate the virtual environment: `$ . venv/bin/activate`
 
 ### All platforms
-7. Install the module from the private repo: `pip install git+https://github.com/mjtadema/porepipe.git`
+7. Install the module from the private repo: `pip install git+https://github.com/mjtadema/porepipe.git@master`
 
 ## Updating
-Update using the latest development version **(Recommended)**: `pip install --upgrade --force-reinstall --no-deps git+https://github.com/mjtadema/porepipe.git`
+Update using the latest development version: `pip install --upgrade --force-reinstall --no-deps git+https://github.com/mjtadema/porepipe.git`
 
-Update using the latest stable version: `pip install --upgrade --force-reinstall --no-deps git+https://github.com/mjtadema/porepipe.git@master`
+Update using the latest stable version **(Recommended)**: `pip install --upgrade --force-reinstall --no-deps git+https://github.com/mjtadema/porepipe.git@master`
 
 ## Usage
 The pipeline is defined and used through the [Pipeline object](#pipeline-design). As a convention, class names use what is known as "CamelCase", while other variables use_this_style_of_naming. Available pipeline stages can be found [here](#available-stages).
@@ -42,27 +42,28 @@ The pipeline is defined and used through the [Pipeline object](#pipeline-design)
 
 ```python
 # Example:
-import Pipeline from porepipe
-from porepipe.stages import *
-import porepipe
+from Pipeline import *
+# This imports Pipeline, ABF, stages and feature extractors
 
-help(porepipe.stages)
+# run `help(porepipe.stages)` to list built-in stages
+# run `help(porepipe.features)` to list built-in feature extractors
 
-pipeline = Pipeline(
-    stage_1,
-    stage_2,
-    stage_3
-)
-
-import ABF from pyabf
-
+# Defining the ABF object separately is handy because 
+# we often need access to the sample rate
 abf = ABF("some_abf_file.abf")
 fs = abf.sampleRate # get sample rate in Hz
+
+# Define the pipeline with some stages
+pipeline = Pipeline(
+    stage_1(),
+    stage_2(),
+    stage_3()
+)
 ```
 
 The pipeline takes any number of functions (or `callables`) as arguments that make up the stages of the pipeline in the order that they will be run.
-We import the `Pipeline` class from the root of the module with `import Pipeline from pipeline`.
-We import the pipeline stages using `from pipeline.stages import *`
+You can also import the `Pipeline` class from the root of the module with `from Pipeline import pipeline`.
+You can also import the pipeline stages using `from porepipe.stages import *`
 Available stages can be listed by running `help(pipeline.stages)` or `?pipeline.stages` in iPython or Jupyter notebook.
 
 ## Available stages
@@ -81,9 +82,10 @@ Available stages can be listed by running `help(pipeline.stages)` or `?pipeline.
 | `switch()`                                        | Segment a gapfree trace based on large, short, current spikes cause by manual voltage switching.                                                                                                                                                                                                                                                                                                                      |
 | `threshold(lo,hi)`                                | Segment an input segment by consecutive stretches of current between `lo` and `hi`.                                                                                                                                                                                                                                                                                                                                   |
 | `levels(n, tol=0, sortby='mean')`                 | Detect sublevels by fitting a [gaussian mixture model](https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html). Use `n` to set the number of gaussians to fit, `tol` is a number between 0 and 1 and controls how much short spikes are tolerated. `sortby` controls how the gaussians are labeled, can be sorted by "mean" or by "weight" (weight being the height of the gaussian). |
+| `volt(c, v)` | Select part of a sweep where the control voltage `c` matches the target voltage `v` |
 
 ### Decorators
-[Decorators](https://peps.python.org/pep-0318/) are functions that wrap around other functions with a convenient syntax. I use them to _enhance_ the "default" behavior of the stages and they live in `pipeline.decorators`. The following decorators are predefined:
+[Decorators](https://peps.python.org/pep-0318/) are functions that wrap around other functions with a convenient syntax. I use them to _enhance_ the "default" behavior of the stages and they live in `porepipe.decorators`. The following decorators are predefined:
 
 | Name                                | Description                                                                                                                                                                                                                                                                                                                   |
 |------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -146,5 +148,35 @@ def new_stage(t,y):
         yield new_t, new_y
 ```
 
+## Inspection and validation
+The main advantage of using a `Tree` datastructure is that every segment generated by the pipeline is connected to its parent segment. This means that along every step of the pipeline, the stage input and output can be plotted and inspected to ensure the output matches expectations. To aid in this there are a couple of convenience functions:
+
+`Segment.plot` is a thin wrapper around `matplotlib.pyplot.plot` to make it easy to plot segment data. It implements one additional keyword argument of its own called `no_time`. This removes the time from the plot and instead generates new `x` values using `np.linspace` between 0 and 1. The effect is that all events get plotted on top of each other. Keyword arguments meant for `matplotlib.pyplot.plot` get passed through as expected. 
+
+**More inspection features pending...**
+
 ## Features
-**coming soon**
+After segmenting a trace and detecting events, features can be extracted. This generally means that a single event gets reduced to several characteristic quantities that we call _features_, such as the mean current value (using `mean`) or the dwell-time (using `dt`), among other features. Below is a working `Pipeline` definition with feature extraction to extract the mean current and the dwelltime from the events resulting from the `Pipeline`.
+
+```python
+# Example feature extraction
+
+from porepipe import *
+
+abf = ABF("some_abf_file.abf")
+fs = abf.sampleRate
+
+pipe = Pipeline(
+   volt(abf.sweepC, 20.0),
+   lowpass(cutoff_fq=10e3, fs=fs),
+   trim(left=fs * 0.01),
+   as_ires(),
+   threshold(lo=0.0, hi=0.8, cutoff=1e-3 * fs),
+   trim(left=1e-4 * fs, right=1e-4 * fs),
+   features=(mean, dt)
+)
+```
+
+As the features are kept in a standard `pandas.DataFrame`, the standard [pandas convenience plotting methods](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.plot.html) can be used for plotting. 
+
+

@@ -217,7 +217,11 @@ def threshold(t, y, *, lo, hi, tol=0):
 
 @partial
 def trim(t, y, *, left=0, right=1):
-    """Trim off part of the segment"""
+    """
+    Trim off part of the segment
+    :param left: samples to trim off on the left, can use seconds if multiplied by fs
+    :param right: samples to trim off on the right, can use seconds if multiplied by fs
+    """
     left = int(left)
     right = int(right)
     yield t[left:-right], y[left:-right]
