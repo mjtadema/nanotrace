@@ -155,6 +155,7 @@ class Segment(NodeMixin, PoolMixin, ReprMixin, PlotMixin):
         else:
             x = self.t
         y = self.y
+
         plt.plot(x, y, fmt, data=self,**kwargs)
 
 
