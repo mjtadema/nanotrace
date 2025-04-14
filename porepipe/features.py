@@ -1,4 +1,3 @@
-from __future__ import annotations
 """
 Implement built-in feature extractors.
 Three main classes:
@@ -12,6 +11,7 @@ Three main classes:
     - Use when the signal contains sequence information
     - combined in `*sequence_features`
 """
+from __future__ import annotations
 __copyright__ = """
 Copyright 2025 Matthijs Tadema
 
