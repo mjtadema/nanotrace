@@ -27,7 +27,7 @@ from matplotlib import pyplot as plt
 from pyabf import abfWriter
 from tqdm.auto import tqdm
 
-from exception import RootError
+from .exception import RootError
 
 logger = logging.getLogger(__name__)
 
