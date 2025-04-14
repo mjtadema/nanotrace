@@ -18,7 +18,7 @@ import logging
 from pathlib import Path
 
 from .abf import AbfRoot
-from .segment import Root
+from root import Root
 from .utils import ABFLike, as_abf
 
 logger = logging.getLogger(__name__)

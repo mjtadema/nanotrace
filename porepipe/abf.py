@@ -19,7 +19,8 @@ import logging
 import numpy as np
 from pyabf import abfWriter
 
-from .segment import Root, Segment
+from .segment import Segment
+from root import Root
 from .utils import ReprMixin
 
 logger = logging.getLogger(__name__)
