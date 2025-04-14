@@ -10,7 +10,7 @@ authors = [
 ]
 description = "Automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
