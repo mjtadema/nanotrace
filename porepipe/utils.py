@@ -28,7 +28,7 @@ ABFLike = Union[ABF, str, Path]
 
 
 def as_abf(abf: ABFLike) -> ABF:
-    if not isinstance(abf, ABFLike):
+    if not type(abf) in ABFLike:
         raise TypeError(('Expected an AbfLike, not type', type(abf)))
     if isinstance(abf, str):
         abf = Path(abf)
