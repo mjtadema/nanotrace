@@ -17,32 +17,37 @@ class Root(NodeMixin, PoolMixin):
     As the main interface to the tree, Root implements some convenience functions and properties:
     """
 
-    def __init__(self, stages, *, n_segments=-1, features=None, post=None, columns=None, pipe=None) -> None:
+    def __init__(self, stages, *, pipeline, n_segments=-1, features=None, post=None) -> None:
         """
-        Root constructor takes an abf file and a pipeline of refi
-        :param pipeline: a list of functions acting as pipeline stages
-        :param extractors: a list of extractors to extract features from events
-        :param columns: a list of column names to add to the features dataframe
-        :param abf:
-        :param gc: bool, garbage collect (default: False)
-        :param njobs: number of jobs to run in parallel
+        Root constructor only sets up generic pipeline stuff.
+        Specific roots that subclass this handle their specific tree setup.
+
+        :param stages: a list of functions acting as pipeline stages
+        :param pipeline: an instance of Pipeline that constructed this tree
+
+        Optional parameters:
+        :param n_segments: number of segments to generate. Useful for pipeline development.
+        :param features: a list of extractors to extract features from events
+        :param post: an optional list of postprocessors to apply to the events
         """
         self._features = None  # Cache features
 
-        self.pipe = pipe
+        self.pipe = pipeline
         if features is None:
             features = []
         self.extractors = features
-        self.columns = columns
         self.stages = stages
         self.post = post
         self.n_segments = n_segments
 
     def __getitem__(self, item) -> Any:
+        """
+        Makes Root usable as a key addressable object.
+        Useful for plotting
+        """
         if isinstance(item, int):
             return self.by_index[item]
         elif isinstance(item, str):
-            # Makes Root usable as a key addressable object
             if hasattr(self, item):
                 return getattr(self, item)
             else:
@@ -53,10 +58,6 @@ class Root(NodeMixin, PoolMixin):
     @property
     def n_jobs(self) -> int:
         return self.pipe.n_jobs
-
-    @property
-    def gc(self) -> bool:
-        return self.pipe.gc
 
     @property
     @requires_children
