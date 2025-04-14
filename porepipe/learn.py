@@ -1,3 +1,6 @@
+"""
+Some convenience functions to make using OneClass models (outlier detection) easier to use.
+"""
 __copyright__ = """
 Copyright 2025 Matthijs Tadema
 

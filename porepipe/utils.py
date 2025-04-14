@@ -39,11 +39,6 @@ def as_abf(abf: ABFLike) -> ABF:
     return abf
 
 
-def polarity(y):
-    """Calculate the polarity of a trace by determining the sign of the median current"""
-    return np.sign(np.median(y))
-
-
 def baseline(y, minsamples, max_amplitude=500) -> float:
     """
     Automatic baseline calculation

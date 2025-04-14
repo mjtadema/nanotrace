@@ -36,6 +36,9 @@ Currently implemented stages:
     and controls how much short spikes are tolerated. `sortby` controls how the gaussians
     are labeled, can be sorted by "mean" or by "weight" (weight being the height of the gaussian).
 
+ `volt(c, v)` :
+    Select a part of a trace where the voltage `v` matches the control voltage array `c`.
+
 Custom stages:
 --------------
     Each stage is a callable that takes _only_ a time array and a current array as positional arguments.
@@ -93,7 +96,6 @@ from scipy import signal
 from scipy.signal import find_peaks, fftconvolve
 from sklearn.mixture import GaussianMixture
 
-from porepipe import partial
 from .decorators import partial, cutoff
 from .utils import baseline, smooth_pred
 
