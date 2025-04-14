@@ -23,12 +23,13 @@ def pipe_blood(abf_blood):
         threshold(lo=0.0, hi=0.8, cutoff=1e-3 * fs),
         trim(left=1e-4 * fs, right=1e-4 * fs),
         features=(*global_features, psd_freq(fs=fs)),
-        n_segments=10
+        n_segments=10,
+        n_jobs=4
     )
     return pipe
 
 def test_blood(pipe_blood, abf_blood):
-    assert len(pipe_blood(abf_blood, n_jobs=4).features) > 0
+    assert len(pipe_blood(abf_blood).features) > 0
 
 def test_sublevels():
     abf = ABF("test/test_sublevels.abf")
