@@ -95,6 +95,7 @@ from .decorators import partial, cutoff
 from .utils import baseline, smooth_pred
 
 
+@partial
 @cutoff
 def switch(t, y):
     """

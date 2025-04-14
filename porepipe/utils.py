@@ -1,3 +1,4 @@
+from __future__ import annotations
 __copyright__ = """
 Copyright 2025 Matthijs Tadema
 
@@ -24,10 +25,11 @@ from pyabf import ABF
 from scipy.signal import fftconvolve
 
 ABFLike = Union[ABF, str, Path]
+ABFLikeTypes = [ABF, str, Path]
 
 
 def as_abf(abf: ABFLike) -> ABF:
-    if not isinstance(abf, ABFLike):
+    if not type(abf) in ABFLikeTypes:
         raise TypeError(('Expected an AbfLike, not type', type(abf)))
     if isinstance(abf, str):
         abf = Path(abf)
