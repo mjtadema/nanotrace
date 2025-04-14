@@ -137,6 +137,20 @@ class Root(Node):
 
     @property
     @requires_children
+    def by_name(self) -> dict[str, tuple[Segment]]:
+        """
+        :return: a dict of tuples containing nodes grouped by stage
+        """
+        return {
+            (stage.__name__ if callable(stage) else stage): level
+            for stage, level in zip(
+                ['root', 'sweep', *self.stages],
+                LevelOrderGroupIter(self)
+            )
+        }
+
+    @property
+    @requires_children
     def events(self) -> np.ndarray:
         """
         :return: segments from the lowest level as array
