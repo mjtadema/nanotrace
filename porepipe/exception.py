@@ -7,4 +7,9 @@ class PorePipeException(Exception):
     pass
 
 
-class StageError(Exception): pass
+class StageError(PorePipeException):
+    pass
+
+
+class RootError(PorePipeException):
+    pass

@@ -1,3 +1,6 @@
+"""
+Functions, classes and types to handle abf files.
+"""
 __copyright__ = """
 Copyright 2025 Matthijs Tadema
 
@@ -15,18 +18,31 @@ limitations under the License.
 """
 
 import logging
+from pathlib import Path
+from typing import Union
 
-import numpy as np
-from pyabf import abfWriter
+from pyabf import ABF
 
-from .segment import Segment
-from root import Root
-from .utils import ReprMixin
+from .segment import Segment, Root
 
 logger = logging.getLogger(__name__)
 
 
-class AbfRoot(Root, ReprMixin):
+ABFLike = Union[ABF, str, Path]
+
+
+def as_abf(abf: ABFLike) -> ABF:
+    if not isinstance(abf, ABFLike):
+        raise TypeError(('Expected an AbfLike, not type', type(abf)))
+    if isinstance(abf, str):
+        abf = Path(abf)
+    if isinstance(abf, Path):
+        if not abf.exists(): raise FileNotFoundError(abf)
+        abf = ABF(abf)
+    return abf
+
+
+class AbfRoot(Root):
     """
     Root node for abf files
     """
@@ -56,16 +72,4 @@ class AbfRoot(Root, ReprMixin):
     def fs(self) -> int:
         return self.abf.sampleRate
 
-    def to_abf(self, filename: str) -> None:
-        """
-        Write events as sweeps to an ABF v1 file
-        :param filename: filename to write to
-        :return:
-        """
-        maxlen = max([len(event.y) for event in self.events])
-        sweeps = []
-        for event in self.events:
-            padlen = maxlen - len(event.y)
-            sweeps.append(np.pad(event.y, (0, padlen), mode='constant', constant_values=0))
-        logger.debug("Writing %d sweeps to %s", len(sweeps), filename)
-        abfWriter.writeABF1(np.asarray(sweeps), filename, sampleRateHz=self.fs)
+

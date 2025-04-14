@@ -17,9 +17,8 @@ limitations under the License.
 import logging
 from pathlib import Path
 
-from .abf import AbfRoot
-from root import Root
-from .utils import ABFLike, as_abf
+from .segment import Root
+from .abf import ABFLike, as_abf, AbfRoot
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +75,7 @@ class Pipeline:
         abfpath = Path(abf.abfFilePath)
         if not abfpath.absolute() in self._cache:
             logger.debug("Creating tree from %s", abfpath)
-            rt = AbfRoot(abf, self.stages, pipe=self, **self.kwargs)
+            rt = AbfRoot(abf, self.stages, pipeline=self, **self.kwargs)
             if not cache:
                 # Don't cache if testing
                 return rt

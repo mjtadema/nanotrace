@@ -15,8 +15,6 @@ def abf_blood():
 @pytest.fixture
 def pipe_blood(abf_blood):
     fs = abf_blood.sampleRate
-    freq = partial(psd_freq, n=8, fs=fs)
-    freq.__name__ = "freq"
     pipe = Pipeline(
         volt(abf_blood.sweepC, 20.0),
         lowpass(cutoff_fq=10e3, fs=fs),
@@ -24,7 +22,7 @@ def pipe_blood(abf_blood):
         as_ires(),
         threshold(lo=0.0, hi=0.8, cutoff=1e-3 * fs),
         trim(left=1e-4 * fs, right=1e-4 * fs),
-        features=(*global_features, freq),
+        features=(*global_features, psd_freq(fs=fs)),
         n_segments=10
     )
     return pipe

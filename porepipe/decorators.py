@@ -84,16 +84,3 @@ def cutoff(f: Callable) -> Callable:
     return wrapper
 
 
-def requires_children(f: Callable) -> Callable:
-    """
-    Used in root nodes to generate children before they are accessed.
-    """
-
-    @wraps(f)
-    def wrapper(self, *args, **kwargs) -> Any:
-        if not self.children:
-            # Generate the tree
-            self.derive_children()
-        return f(self, *args, **kwargs)
-
-    return wrapper

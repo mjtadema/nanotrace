@@ -1,5 +1,5 @@
 """
-Experimental refiners
+Experimental pipeline stages
 """
 __copyright__ = """
 Copyright 2025 Matthijs Tadema
