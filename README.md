@@ -1,10 +1,12 @@
 # PorePipe
-
 `porepipe` is a python library for automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction.
 
-This guide will cover the following topics:
+## Graphical abstract (very rough, work in progress)
+![graphical abstract](abstract/abstract.png)
 
 ## Table of contents
+This guide covers the following topics:
+
 1. [Installation](#installation)
 2. [Updating](#updating)
 3. [Usage example](#usage)
