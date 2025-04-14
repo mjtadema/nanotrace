@@ -84,13 +84,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import re
 from functools import wraps
 
 import numpy as np
+from pyabf import ABF
 from scipy import signal
 from scipy.signal import find_peaks, fftconvolve
 from sklearn.mixture import GaussianMixture
 
+from porepipe import partial
 from .decorators import partial, cutoff
 from .utils import baseline, smooth_pred
 
@@ -238,3 +241,32 @@ def volt(c, v):
         yield t[start:end], y[start:end]
 
     return cached
+
+
+@partial
+def by_tag(t: np.ndarray, y: np.ndarray, *, abf: ABF, pattern: str):
+    """
+    Segment a gapfree trace by tags matching a pattern.
+    NOTE: must be used as the first stage otherwise the tag times don't make sense.
+
+    :param t: time
+    :param y: current
+    :param abf: abf file
+    :param pattern: regex pattern
+    :return: tuple(time,current)
+    """
+    tags = abf.tagComments
+    times = abf.tagTimesSec
+    fs = abf.sampleRate
+
+    matching = np.array([i for i, t in enumerate(tags) if re.search(pattern, t) is not None])
+    if len(matching) == 0:
+        # If the tag is not found, simply don't yield anything
+        return
+
+    i = np.asarray([*np.array(times) * fs, -1]).astype(int)
+    start = np.arange(len(times))[matching]
+    end = start + 1
+
+    for s, e in zip(i[start], i[end]):
+        yield t[s:e], y[s:e]

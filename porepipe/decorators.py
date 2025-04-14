@@ -1,3 +1,8 @@
+"""
+Decorators are "syntactic" for a function wrapping another function.
+The decorators defined here add some convenient functionality to some
+of the functions defined elsewhere.
+"""
 __copyright__ = """
 Copyright 2025 Matthijs Tadema
 
@@ -15,9 +20,7 @@ limitations under the License.
 """
 
 import logging
-import sys
 from functools import wraps
-from pickle import whichmodule, _getattribute
 from typing import Callable, Any, Generator
 
 import numpy as np
@@ -26,7 +29,12 @@ logger = logging.getLogger(__name__)
 
 
 def catch_errors(n=1) -> Callable:
-    """Catch errors and return nan instead of breaking"""
+    """
+    Catch errors and return nan instead of breaking.
+    Handy for feature extractors.
+
+    :param n: number of expected values so we know how many nans to return
+    """
 
     def decorator(f: Callable) -> Callable:
         @wraps(f)
@@ -46,7 +54,9 @@ def catch_errors(n=1) -> Callable:
 
 
 def partial(f: Callable) -> Callable:
-    """Decorate a function so that the first call saves the arguments in a closure"""
+    """
+    Decorate a function so that the first call saves the arguments in a closure.
+    """
 
     def closure(*p_args, **p_kwargs) -> Callable:
         @wraps(f)
@@ -61,7 +71,9 @@ def partial(f: Callable) -> Callable:
 
 
 def cutoff(f: Callable) -> Callable:
-    """Filter out any segments shorter than the cutoff n samples"""
+    """
+    Filter out any segments shorter than the cutoff n samples.
+    """
 
     @wraps(f)
     def wrapper(*args, cutoff=0, **kwargs) -> Generator:
@@ -73,7 +85,9 @@ def cutoff(f: Callable) -> Callable:
 
 
 def requires_children(f: Callable) -> Callable:
-    """Used in root nodes to generate children before they are accessed"""
+    """
+    Used in root nodes to generate children before they are accessed.
+    """
 
     @wraps(f)
     def wrapper(self, *args, **kwargs) -> Any:
