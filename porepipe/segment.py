@@ -285,9 +285,10 @@ class Segment(Node):
     def n_segments(self):
         return self.root.n_segments
 
-    def plot(self, fmt='', no_time=False, **kwargs):
+    # Convenience functions
+    def plot(self, fmt='', normalize=False, **kwargs):
         """Plot the time vs current of this segment"""
-        if no_time:
+        if normalize:
             x = np.linspace(0,1, len(self.t))
         else:
             x = self.t
