@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "porepipe"
-version = "0.0.1.9"
+version = "0.0.2"
 authors = [
   { name="Matthijs Tadema", email="m.j.tadema@rug.nl" },
 ]
