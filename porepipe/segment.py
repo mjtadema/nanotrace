@@ -18,6 +18,7 @@ limitations under the License.
 import logging
 from functools import wraps
 from typing import Any, Callable
+from xml.sax.expatreader import AttributesImpl
 
 import numpy as np
 import pandas as pd
@@ -242,8 +243,10 @@ class Segment(Node):
         """
         self.t = t
         self.y = y
-        if len(l) > 0:
-            self.l = l
+        if len(l) == 1:
+            self.l = l[0]
+        elif len(l) > 1:
+            raise NotImplementedError("more than 1 label is not supported for now")
         else:
             self.l = None
         super().__init__(*args, **kwargs)
@@ -312,6 +315,18 @@ class Segment(Node):
             kwargs['color'] = 'C1'
         for event in self.events:
             event.plot(*args, **kwargs)
+
+    def labels(self, *args, **kwargs):
+        """Color events by label"""
+        try:
+            labels = [event.l for event in self.events]
+        except AttributeError as e:
+            raise AttributeError("events don't have labels") from e
+        unique = np.unique(labels)
+        for i,l in enumerate(unique):
+            c = 'C%d'%i
+            for event in self.events[labels==l]:
+                event.plot(color=c)
 
     def write_abf(self, filename: str, *, fs=None) -> None:
         """
