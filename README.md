@@ -11,11 +11,11 @@ This guide covers the following topics:
 2. [Updating](#updating)
 3. [Usage example](#usage)
 4. [Available stages](#available-stages)
-    1. [Custom stages](#defining-a-custom-stage)
+    * [Custom stages](#defining-a-custom-stage)
 2. [Inspection and validation](#inspection-and-validation)
-   2. [Example](#example)
+    * [Example](#example)
 5. [Feature extraction](#feature-extraction)
-   3. [Example](#example-1)
+    * [Example](#example-1)
 
 ## Installation
 1. Ask **Matthijs** for an invite to the private github repository (it's private for now as I want to refine it a bit before I publish it).
