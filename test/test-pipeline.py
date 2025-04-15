@@ -34,7 +34,6 @@ def test_blood(pipe_blood, abf_blood):
     print(pipe_blood(abf_blood))
     pipe_blood(abf_blood).by_name['volt'][0].inspect()
 
-
 def test_sublevels():
     abf = ABF("test/test_sublevels.abf")
     fs = abf.sampleRate

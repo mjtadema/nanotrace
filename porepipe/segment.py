@@ -18,7 +18,6 @@ limitations under the License.
 import logging
 from functools import wraps
 from typing import Any, Callable
-from xml.sax.expatreader import AttributesImpl
 
 import numpy as np
 import pandas as pd
@@ -151,6 +150,7 @@ class Root(Node):
 
     @property
     @requires_children
+
     def events(self) -> np.ndarray:
         """
         :return: segments from the lowest level as array
@@ -234,7 +234,6 @@ class Segment(Node):
     Segments have parent segments and child segments.
     Segments take care of generating events.
     """
-
     def __init__(self, t: np.ndarray, y: np.ndarray, l: list, *args, **kwargs):
         """
         :param t: array of time
@@ -341,4 +340,3 @@ class Segment(Node):
                 raise RootError("write_abf requires a sample rate")
         logger.debug("Writing %d datapoints to %s", len(self.y), filename)
         abfWriter.writeABF1(self.y, filename, sampleRateHz=fs)
-
