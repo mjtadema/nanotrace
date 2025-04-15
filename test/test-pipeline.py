@@ -30,18 +30,22 @@ def pipe_blood(abf_blood):
 
 def test_blood(pipe_blood, abf_blood):
     assert len(pipe_blood(abf_blood).features) > 0
+    print(pipe_blood)
+    print(pipe_blood(abf_blood))
+    pipe_blood(abf_blood).by_name['volt'][0].inspect()
 
 def test_sublevels():
     abf = ABF("test/test_sublevels.abf")
     fs = abf.sampleRate
     pipe = Pipeline(
         lowpass(cutoff_fq=100, fs=fs),
-        as_ires(),
-        threshold(lo=0.5, hi=0.6, cutoff=1e-1 * fs, tol=0),
-        trim(left=0.1 * fs, right=0.1 * fs),
-        levels(n=2),
+        as_ires(max_amplitude=150),
+        threshold(lo=0.55, hi=0.7, cutoff=2 * fs),
+        trim(left=0.01 * fs, right=0.01 * fs),
+        levels(n=2, tol=0.05),
         features=global_features,
-        n_segments=10
+        n_segments=10,
+        n_jobs=4
     )
     pipe(abf).events[0].y = np.array([])
     assert len(pipe(abf).features) > 0

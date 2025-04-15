@@ -33,6 +33,20 @@ logger = logging.getLogger(__name__)
 
 name_resolver = Resolver('name')
 
+def requires_children(f: Callable) -> Callable:
+    """
+    Used in root nodes to generate children before they are accessed.
+    """
+
+    @wraps(f)
+    def wrapper(self, *args, **kwargs) -> Any:
+        if not self.children:
+            # Generate the tree
+            self._run_stage()
+        return f(self, *args, **kwargs)
+
+    return wrapper
+
 
 class Node(NodeMixin):
     """
@@ -79,20 +93,13 @@ class Node(NodeMixin):
             prev = pre
         return '\n'.join(out)
 
-
-def requires_children(f: Callable) -> Callable:
-    """
-    Used in root nodes to generate children before they are accessed.
-    """
-
-    @wraps(f)
-    def wrapper(self, *args, **kwargs) -> Any:
-        if not self.children:
-            # Generate the tree
-            self.derive_children()
-        return f(self, *args, **kwargs)
-
-    return wrapper
+    @property
+    @requires_children
+    def by_index(self) -> list[Any]:
+        """
+        :return: a list of nodes grouped by level
+        """
+        return list(LevelOrderGroupIter(self))
 
 
 class Root(Node):
@@ -129,14 +136,6 @@ class Root(Node):
 
     @property
     @requires_children
-    def by_index(self) -> list[Any]:
-        """
-        :return: a list of nodes grouped by level
-        """
-        return list(LevelOrderGroupIter(self))
-
-    @property
-    @requires_children
     def by_name(self) -> dict[str, tuple[Segment]]:
         """
         :return: a dict of tuples containing nodes grouped by stage
@@ -151,14 +150,16 @@ class Root(Node):
 
     @property
     @requires_children
+
     def events(self) -> np.ndarray:
         """
         :return: segments from the lowest level as array
         """
         events = np.asarray(self.by_index[-1])
-        if not self.post is None:
+        if self.post is None:
+            return events
+        else:
             return events[self.post(self.features)]
-        return events
 
     @property
     def features(self) -> pd.DataFrame:
@@ -233,7 +234,6 @@ class Segment(Node):
     Segments have parent segments and child segments.
     Segments take care of generating events.
     """
-
     def __init__(self, t: np.ndarray, y: np.ndarray, l: list, *args, **kwargs):
         """
         :param t: array of time
@@ -242,8 +242,10 @@ class Segment(Node):
         """
         self.t = t
         self.y = y
-        if len(l) > 0:
-            self.l = l
+        if len(l) == 1:
+            self.l = l[0]
+        elif len(l) > 1:
+            raise NotImplementedError("more than 1 label is not supported for now")
         else:
             self.l = None
         super().__init__(*args, **kwargs)
@@ -254,30 +256,6 @@ class Segment(Node):
     def __getitem__(self, item):
         """So we can use segments as "data" in plt.plot"""
         return getattr(self, item)
-
-    # "Inherit" these properties from the root node
-    @property
-    def n_jobs(self):
-        return self.root.n_jobs
-
-    @property
-    def n_segments(self):
-        return self.root.n_segments
-
-    @property
-    @requires_children
-    def by_index(self) -> list[Any]:
-        """
-        returns a list of nodes grouped by level
-        """
-        return list(LevelOrderGroupIter(self))
-
-    @NodeMixin.children.getter
-    def children(self):
-        """Lazily run self._run_stage if there are no children"""
-        if not NodeMixin.children.fget(self):
-            self._run_stage()
-        return NodeMixin.children.fget(self)
 
     def _run_stage(self):
         """
@@ -293,15 +271,61 @@ class Segment(Node):
                 if i == self.n_segments:
                     break
 
-    def plot(self, fmt='', no_time=False, **kwargs):
+    @NodeMixin.children.getter
+    def children(self):
+        """Lazily run self._run_stage if there are no children"""
+        if not NodeMixin.children.fget(self):
+            self._run_stage()
+        return NodeMixin.children.fget(self)
+
+    # "Inherit" these properties from the root node
+    @property
+    def n_jobs(self):
+        return self.root.n_jobs
+
+    @property
+    def n_segments(self):
+        return self.root.n_segments
+
+    @property
+    @requires_children
+    def events(self) -> np.ndarray:
+        """
+        :return: segments from the lowest level as array
+        """
+        events = np.asarray(self.by_index[-1])
+        return events
+
+    # Convenience functions
+    def plot(self, fmt='', normalize=False, **kwargs):
         """Plot the time vs current of this segment"""
-        if no_time:
+        if normalize:
             x = np.linspace(0,1, len(self.t))
         else:
             x = self.t
         y = self.y
 
         plt.plot(x, y, fmt, data=self,**kwargs)
+
+    def inspect(self, *args, **kwargs):
+        """Plot events on top of self"""
+        self.plot(*args, **kwargs)
+        if not 'color' in kwargs:
+            kwargs['color'] = 'C1'
+        for event in self.events:
+            event.plot(*args, **kwargs)
+
+    def labels(self, *args, **kwargs):
+        """Color events by label"""
+        try:
+            labels = [event.l for event in self.events]
+        except AttributeError as e:
+            raise AttributeError("events don't have labels") from e
+        unique = np.unique(labels)
+        for i,l in enumerate(unique):
+            c = 'C%d'%i
+            for event in self.events[labels==l]:
+                event.plot(color=c)
 
     def write_abf(self, filename: str, *, fs=None) -> None:
         """
@@ -316,4 +340,3 @@ class Segment(Node):
                 raise RootError("write_abf requires a sample rate")
         logger.debug("Writing %d datapoints to %s", len(self.y), filename)
         abfWriter.writeABF1(self.y, filename, sampleRateHz=fs)
-
