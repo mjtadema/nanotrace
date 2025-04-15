@@ -255,30 +255,6 @@ class Segment(Node):
         """So we can use segments as "data" in plt.plot"""
         return getattr(self, item)
 
-    # "Inherit" these properties from the root node
-    @property
-    def n_jobs(self):
-        return self.root.n_jobs
-
-    @property
-    def n_segments(self):
-        return self.root.n_segments
-
-    @property
-    @requires_children
-    def by_index(self) -> list[Any]:
-        """
-        returns a list of nodes grouped by level
-        """
-        return list(LevelOrderGroupIter(self))
-
-    @NodeMixin.children.getter
-    def children(self):
-        """Lazily run self._run_stage if there are no children"""
-        if not NodeMixin.children.fget(self):
-            self._run_stage()
-        return NodeMixin.children.fget(self)
-
     def _run_stage(self):
         """
         Run the stage to derive children.
@@ -292,6 +268,22 @@ class Segment(Node):
                 seg.parent = self
                 if i == self.n_segments:
                     break
+
+    @NodeMixin.children.getter
+    def children(self):
+        """Lazily run self._run_stage if there are no children"""
+        if not NodeMixin.children.fget(self):
+            self._run_stage()
+        return NodeMixin.children.fget(self)
+
+    # "Inherit" these properties from the root node
+    @property
+    def n_jobs(self):
+        return self.root.n_jobs
+
+    @property
+    def n_segments(self):
+        return self.root.n_segments
 
     def plot(self, fmt='', no_time=False, **kwargs):
         """Plot the time vs current of this segment"""
