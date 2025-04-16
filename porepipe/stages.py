@@ -96,6 +96,7 @@ from scipy import signal
 from scipy.signal import find_peaks, fftconvolve
 from sklearn.mixture import GaussianMixture
 
+from exception import StageError
 from .decorators import partial, cutoff
 
 
@@ -251,10 +252,8 @@ def levels(t, y, *, n: int, tol: float=0, sortby: str='mean'):
         yield t[s:e], y[
                       s:e], l  # This is the way to smuggle out extra information without having access to the segment yet
 
-# TODO properly implement porepipe exception classes
-class StageError(Exception): pass
-
-def volt(c, v):
+@partial
+def volt(t,y,*,c,v):
     """
     Given the control voltage array and a target voltage,
     cache start and end indices in a closure that slice the sweep at the target voltage.
@@ -267,12 +266,7 @@ def volt(c, v):
         start, end = np.arange(len(c))[np.diff(c == v, append=0) != 0]
     except ValueError as e:
         raise StageError("volt not in control voltage array") from e
-
-    @wraps(volt)
-    def cached(t, y):
-        yield t[start:end], y[start:end]
-
-    return cached
+    yield t[start:end], y[start:end]
 
 
 @partial
