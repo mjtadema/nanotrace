@@ -21,6 +21,7 @@ limitations under the License.
 
 import logging
 from functools import wraps
+from inspect import signature, Parameter
 from typing import Callable, Any, Generator
 
 import numpy as np
@@ -74,9 +75,17 @@ def cutoff(f: Callable) -> Callable:
     """
     Filter out any segments shorter than the cutoff n samples.
     """
+    sig = signature(f)
+    params = list(sig.parameters.values())
+    cutoff = Parameter(
+        'cutoff', Parameter.KEYWORD_ONLY,
+        default=0, annotation=int)
+    params.append(cutoff)
+    sig = sig.replace(parameters=params)
+    f.__signature__ = sig
 
     @wraps(f)
-    def wrapper(*args, cutoff=0, **kwargs) -> Generator:
+    def wrapper(*args, cutoff: int=0, **kwargs) -> Generator:
         for t, y, *l in f(*args, **kwargs):
             if len(t) > cutoff:
                 yield t, y, *l
