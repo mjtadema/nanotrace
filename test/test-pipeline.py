@@ -16,7 +16,7 @@ def abf_blood():
 def pipe_blood(abf_blood):
     fs = abf_blood.sampleRate
     pipe = Pipeline(
-        volt(c=abf_blood.sweepC, v=20.0),
+        volt(abf=abf_blood, v=20.0),
         lowpass(cutoff_fq=10e3, fs=fs),
         trim(left=fs * 0.01),
         as_ires(),

@@ -253,7 +253,7 @@ def levels(t, y, *, n: int, tol: float=0, sortby: str='mean'):
                       s:e], l  # This is the way to smuggle out extra information without having access to the segment yet
 
 @partial
-def volt(t,y,*,c,v):
+def volt(t,y,*,abf: ABF,v: float):
     """
     Given the control voltage array and a target voltage,
     cache start and end indices in a closure that slice the sweep at the target voltage.
@@ -262,6 +262,7 @@ def volt(t,y,*,c,v):
     :param v: (float) target voltage
     :return: function that slices the sweep
     """
+    c = abf.sweepC
     try:
         start, end = np.arange(len(c))[np.diff(c == v, append=0) != 0]
     except ValueError as e:
