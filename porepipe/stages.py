@@ -160,7 +160,7 @@ def switch(t, y):
 
 
 @partial
-def lowpass(t, y, *, cutoff_fq: int, fs: int, order: int=10):
+def lowpass(t, y, *, cutoff_fq: int, abf: ABF, order: int=10):
     """
     Wrap a lowpass butterworth filter
     :param t:
@@ -170,7 +170,7 @@ def lowpass(t, y, *, cutoff_fq: int, fs: int, order: int=10):
     :param order:
     :return:
     """
-    sos = signal.butter(order, cutoff_fq, 'lowpass', fs=fs, output='sos')
+    sos = signal.butter(order, cutoff_fq, 'lowpass', fs=abf.sampleRate, output='sos')
     filt = signal.sosfilt(sos, y)
     assert len(filt) == len(t)
     yield t, filt
