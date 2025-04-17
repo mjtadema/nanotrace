@@ -159,7 +159,7 @@ def switch(t, y):
 
 
 @partial
-def lowpass(t, y, *, cutoff_fq, fs, order=10):
+def lowpass(t, y, *, cutoff_fq: int, fs: int, order: int=10):
     """
     Wrap a lowpass butterworth filter
     :param t:
@@ -176,28 +176,14 @@ def lowpass(t, y, *, cutoff_fq, fs, order=10):
 
 
 @partial
-def as_ires(t, y, max_amplitude=200, minsamples=1000):
+def as_ires(t, y, max_amplitude: int=200, minsamples: int=1000):
     """Calculate Ires using an automatic baseline calculation"""
     yield t, y / baseline(y, minsamples, max_amplitude=max_amplitude)
 
 
 @partial
 @cutoff
-def binned(t, y, *, lo=0, hi=1, nbins=5):
-    """yield segments as sequential bins"""
-    bins = np.linspace(lo, hi, nbins)
-    digi = np.digitize(y, bins)
-    diff = np.diff(digi, append=0)
-    bounds = np.arange(len(y))[(diff != 0)]
-    for s, e in zip(bounds[:-1], bounds[1:]):
-        Y = y[s:e]
-        if lo < np.median(Y) < hi:
-            yield t[s:e], Y
-
-
-@partial
-@cutoff
-def threshold(t, y, *, lo, hi, tol=0):
+def threshold(t, y, *, lo: float, hi: float, tol: float=0):
     """
     Segment into consecutive pieces between lo and hi
     """
@@ -216,7 +202,7 @@ def threshold(t, y, *, lo, hi, tol=0):
 
 
 @partial
-def trim(t, y, *, left=0, right=1):
+def trim(t, y, *, left: int=0, right: int=1):
     """
     Trim off part of the segment
     :param left: samples to trim off on the left, can use seconds if multiplied by fs
@@ -229,7 +215,7 @@ def trim(t, y, *, left=0, right=1):
 
 @partial
 @cutoff
-def levels(t, y, *, n, tol=0, sortby='mean'):
+def levels(t, y, *, n: int, tol: float=0, sortby: str='mean'):
     """
     Detect levels by fitting to a gaussian mixture model with n components.
     tol is a tolerance parameter between 0-1 that smoothens the prediction probabilities
