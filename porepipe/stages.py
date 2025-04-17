@@ -96,7 +96,7 @@ from scipy import signal
 from scipy.signal import find_peaks, fftconvolve
 from sklearn.mixture import GaussianMixture
 
-from exception import StageError
+from .exception import StageError
 from .decorators import partial, cutoff
 
 
