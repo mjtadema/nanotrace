@@ -143,12 +143,10 @@ def smooth_pred(y, fit_, tol):
 
 @partial
 @cutoff
-def switch(t, y):
+def switch(t, y, lo: float=-500, hi: float=500):
     """
     Segment a raw trace based on manual voltage switch spikes
     """
-    hi = np.max(y) / 1.2
-    lo = np.min(y) / 1.2
     his = find_peaks(y, height=hi)[0]
     los = find_peaks(-y, height=-lo)[0]
 
