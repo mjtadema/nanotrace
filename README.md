@@ -185,6 +185,8 @@ pipe(abf).by_name['as_ires'][0].inspect()
 After segmenting a trace and detecting events, features can be extracted. This generally means that a single event gets reduced to several characteristic quantities that we call _features_, such as the mean current value (using `mean`) or the dwell-time (using `dt`), among other features. Below is a working `Pipeline` definition with feature extraction to extract the mean current and the dwelltime from the events resulting from the `Pipeline`.
 
 As the features are kept in a standard `pandas.DataFrame`, the standard [pandas convenience plotting methods](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.plot.html) can be used for plotting. 
+A custom plotting function is added to the pandas plot wrapper for convience and can be accessed from `pandas.DataFrame.plot.dens2d()`.
+It takes two column names and plots them as a scatter plot where the markers are colored by the density of the datapoints.
 
 ### Example:
 ```python
