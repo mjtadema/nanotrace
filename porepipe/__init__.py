@@ -28,3 +28,8 @@ from .pipeline import Pipeline
 from pyabf import ABF
 from .stages import *
 from .features import *
+
+# Bind plotting functions to existing pandas PlotAccessor class
+from .plotting import dens2d
+import pandas.plotting._core
+pandas.plotting._core.PlotAccessor.dens2d = dens2d
