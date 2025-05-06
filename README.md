@@ -1,4 +1,6 @@
-# TRACE — Toolkit for Reproducible Analysis of Current Events
+![trace logo](figures/trace_logo.png)
+
+# TRACE — Toolkit for Reproducible Analysis of Conductive Events
 `trace` is a python library for automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction.
 
 ## Graphical abstract (very rough, work in progress)
