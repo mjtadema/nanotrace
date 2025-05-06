@@ -1,5 +1,5 @@
-# PorePipe
-`porepipe` is a python library for automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction.
+# TRACE — Toolkit for Reproducible Analysis of Current Events
+`trace` is a python library for automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction.
 
 ## Graphical abstract (very rough, work in progress)
 ![graphical abstract](figures/abstract.png)
