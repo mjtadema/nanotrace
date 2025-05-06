@@ -93,7 +93,7 @@ def normalize(t, y, threshold=0, nbins=5):
 @partial
 def by_tag(t: np.ndarray, y: np.ndarray, *, abf: ABF, pattern: str):
     """
-    Segment a gapfree trace by tags matching a pattern.
+    Segment a gapfree nanotrace by tags matching a pattern.
     NOTE: must be used as the first stage otherwise the tag times don't make sense.
 
     :param t: time

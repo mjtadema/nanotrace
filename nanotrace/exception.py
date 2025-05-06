@@ -1,13 +1,6 @@
 """
-author: Matthijs Tadema
-
-PopePipe:
----------
-`porepipe` is a python library for automated nanopore electrophysiology (1d timeseries)
-manipulation and feature extraction. The central class is the `Pipeline` class, imported from the main module:
-`from porepipe import Pipeline`.
-The main module also imports ABF from pyabf for convenience.
-Now also imports stages and feature extractors for convenience.
+Exceptions used in nanotrace. All inherit from the same base
+so it's easier to catch them.
 """
 __copyright__ = """
 Copyright 2025 Matthijs Tadema
@@ -24,7 +17,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from .pipeline import Pipeline
-from pyabf import ABF
-from .stages import *
-from .features import *
+
+class PorePipeException(Exception):
+    pass
+
+
+class StageError(PorePipeException):
+    pass
+
+
+class RootError(PorePipeException):
+    pass

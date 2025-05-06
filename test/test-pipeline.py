@@ -2,10 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from porepipe import *
-from porepipe.stages import *
-from porepipe.features import psd_freq, global_features
-from functools import partial
+from nanotrace import *
 
 @pytest.fixture
 def abf_blood():
@@ -16,8 +13,8 @@ def abf_blood():
 def pipe_blood(abf_blood):
     fs = abf_blood.sampleRate
     pipe = Pipeline(
-        volt(abf_blood.sweepC, 20.0),
-        lowpass(cutoff_fq=10e3, fs=fs),
+        volt(abf=abf_blood, v=20.0),
+        lowpass(cutoff_fq=10e3, abf=abf_blood),
         trim(left=fs * 0.01),
         as_ires(),
         threshold(lo=0.0, hi=0.8, cutoff=1e-3 * fs),
@@ -38,7 +35,7 @@ def test_sublevels():
     abf = ABF("test/test_sublevels.abf")
     fs = abf.sampleRate
     pipe = Pipeline(
-        lowpass(cutoff_fq=100, fs=fs),
+        lowpass(cutoff_fq=100, abf=abf),
         as_ires(max_amplitude=150),
         threshold(lo=0.55, hi=0.7, cutoff=2 * fs),
         trim(left=0.01 * fs, right=0.01 * fs),

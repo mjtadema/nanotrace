@@ -1,5 +1,7 @@
-# PorePipe
-`porepipe` is a python library for automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction.
+![nanotrace logo](figures/trace_logo.png)
+
+# NanoTRACE — Nanopore Toolkit for Reproducible Analysis of Conductive Events
+`nanotrace` is a python library for automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction.
 
 ## Graphical abstract (very rough, work in progress)
 ![graphical abstract](figures/abstract.png)
@@ -47,11 +49,11 @@ The pipeline is defined and used through the [Pipeline object](#pipeline-design)
 
 ```python
 # Example:
-from Pipeline import *
+from nanotrace import *
 # This imports Pipeline, ABF, stages and feature extractors
 
-# run `help(porepipe.stages)` to list built-in stages
-# run `help(porepipe.features)` to list built-in feature extractors
+# run `help(nanotrace.stages)` to list built-in stages
+# run `help(nanotrace.features)` to list built-in feature extractors
 
 # Defining the ABF object separately is handy because 
 # we often need access to the sample rate
@@ -122,7 +124,7 @@ Pipeline(
 Extra options can be given when the pipeline is defined by using the `partial` decorator when defining the function like so:
 
 ```python
-from porepipe.decorators import partial
+from nanotrace.decorators import partial
 
 @partial
 def new_stage(t,y,*,extra_argument):
@@ -141,7 +143,7 @@ Pipeline(
 The `cutoff` decorator is used on a many built-in stages to filter out segments that are too short. It can be added to a custom stage like so:
 
 ```python
-from porepipe.decorators import cutoff
+from nanotrace.decorators import cutoff
 
 @cutoff
 def new_stage(t,y):
@@ -161,8 +163,9 @@ The main advantage of using a `Tree` datastructure is that every segment generat
 `Segment.inspect` is a convenience function that plots events (lowest level segments) on top of itself. This way you get an overview of the effect of all the stages downstream of the stage that `inspect` was called on.
 
 ### Example:
+
 ```python
-from porepipe import *
+from nanotrace import *
 
 abf = ABF("../test/test_blood.abf")
 fs = abf.sampleRate
@@ -185,10 +188,13 @@ pipe(abf).by_name['as_ires'][0].inspect()
 After segmenting a trace and detecting events, features can be extracted. This generally means that a single event gets reduced to several characteristic quantities that we call _features_, such as the mean current value (using `mean`) or the dwell-time (using `dt`), among other features. Below is a working `Pipeline` definition with feature extraction to extract the mean current and the dwelltime from the events resulting from the `Pipeline`.
 
 As the features are kept in a standard `pandas.DataFrame`, the standard [pandas convenience plotting methods](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.plot.html) can be used for plotting. 
+A custom plotting function is added to the pandas plot wrapper for convience and can be accessed from `pandas.DataFrame.plot.dens2d()`.
+It takes two column names and plots them as a scatter plot where the markers are colored by the density of the datapoints.
 
 ### Example:
+
 ```python
-from porepipe import *
+from nanotrace import *
 
 abf = ABF("../test/test_blood.abf")
 fs = abf.sampleRate

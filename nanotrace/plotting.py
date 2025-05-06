@@ -1,7 +1,3 @@
-"""
-Exceptions used in porepipe. All inherit from the same base
-so it's easier to catch them.
-"""
 __copyright__ = """
 Copyright 2025 Matthijs Tadema
 
@@ -17,14 +13,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-
-class PorePipeException(Exception):
-    pass
-
-
-class StageError(PorePipeException):
-    pass
+import numpy as np
+from matplotlib import pyplot as plt
+from scipy.stats import gaussian_kde
 
 
-class RootError(PorePipeException):
-    pass
+def dens2d(self, col1: str, col2: str, *args, **kwargs):
+    """Wrapper around plot kind 'scatter' where the markers are colored by kde"""
+    df = np.asarray(self._parent.loc[:,[col1,col2]])
+    feat = np.asarray(df).T
+    k = gaussian_kde(feat)
+    Z = k(feat)
+    norm = plt.Normalize(Z.min(), Z.max())
+    return self._parent.plot(col1, col2, 'scatter', *args, color=norm(Z), **kwargs)
+

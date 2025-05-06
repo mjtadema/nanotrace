@@ -33,13 +33,13 @@ ABFLikeTypes = [ABF, str, Path]
 
 
 def as_abf(abf: ABFLike) -> ABF:
-    if not type(abf) in ABFLikeTypes:
-        raise TypeError(('Expected an AbfLike, not type', type(abf)))
     if isinstance(abf, str):
         abf = Path(abf)
     if isinstance(abf, Path):
         if not abf.exists(): raise FileNotFoundError(abf)
         abf = ABF(abf)
+    if not type(abf) in ABFLikeTypes:
+        raise TypeError(('Expected an AbfLike, not type', type(abf)))
     return abf
 
 

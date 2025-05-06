@@ -24,7 +24,7 @@ Currently implemented stages:
     you can use this to calculate how many _seconds_ to trim off each side using `nseconds * fs`.
 
  `switch()`                        :
-    Segment a gapfree trace based on large, short, current spikes cause by manual voltage switching.
+    Segment a gapfree nanotrace based on large, short, current spikes cause by manual voltage switching.
 
  `threshold(lo,hi)`                :
     Segment an input segment by consecutive stretches of current between `lo` and `hi`.
@@ -37,7 +37,7 @@ Currently implemented stages:
     are labeled, can be sorted by "mean" or by "weight" (weight being the height of the gaussian).
 
  `volt(c, v)` :
-    Select a part of a trace where the voltage `v` matches the control voltage array `c`.
+    Select a part of a nanotrace where the voltage `v` matches the control voltage array `c`.
 
 Custom stages:
 --------------
@@ -92,11 +92,16 @@ from functools import wraps
 
 import numpy as np
 from pyabf import ABF
+
 from scipy import signal
 from scipy.signal import find_peaks, fftconvolve
 from sklearn.mixture import GaussianMixture
 
+from .exception import StageError
 from .decorators import partial, cutoff
+# from .src import cusum as _do_cusum
+def _do_cusum(): pass
+
 
 
 # Utilities
@@ -139,12 +144,34 @@ def smooth_pred(y, fit_, tol):
     return pred
 
 
+@partial
+@cutoff
+def cusum(t, y, *, w: float, T: float):
+    """
+    Use a CUSUM based method to detect continuous segments above T (threshold)
+    :param w: weight
+    :param T: threshold
+    """
+    Z = y / np.std(y)
+    S = np.empty(Z.shape, dtype=np.float32)
+    for i in range(1, len(Z)):
+        x = S[i - 1]
+        z = Z[i]
+        S[i] = x - z - w
+    mask = S > T
+    diff = np.diff(mask, prepend=0, append=0)
+    start = np.arange(len(diff))[diff == 1]
+    end = np.arange(len(diff))[diff == -1]
+    for s, e in zip(start, end):
+        yield t[s:e], y[s:e]
+
+
 
 @partial
 @cutoff
 def switch(t, y):
     """
-    Segment a raw trace based on manual voltage switch spikes
+    Segment a raw nanotrace based on manual voltage switch spikes
     """
     hi = np.max(y) / 1.2
     lo = np.min(y) / 1.2
@@ -159,7 +186,7 @@ def switch(t, y):
 
 
 @partial
-def lowpass(t, y, *, cutoff_fq, fs, order=10):
+def lowpass(t, y, *, cutoff_fq: int, abf: ABF, order: int=10):
     """
     Wrap a lowpass butterworth filter
     :param t:
@@ -169,35 +196,21 @@ def lowpass(t, y, *, cutoff_fq, fs, order=10):
     :param order:
     :return:
     """
-    sos = signal.butter(order, cutoff_fq, 'lowpass', fs=fs, output='sos')
+    sos = signal.butter(order, cutoff_fq, 'lowpass', fs=abf.sampleRate, output='sos')
     filt = signal.sosfilt(sos, y)
     assert len(filt) == len(t)
     yield t, filt
 
 
 @partial
-def as_ires(t, y, max_amplitude=200, minsamples=1000):
+def as_ires(t, y, max_amplitude: int=200, minsamples: int=1000):
     """Calculate Ires using an automatic baseline calculation"""
     yield t, y / baseline(y, minsamples, max_amplitude=max_amplitude)
 
 
 @partial
 @cutoff
-def binned(t, y, *, lo=0, hi=1, nbins=5):
-    """yield segments as sequential bins"""
-    bins = np.linspace(lo, hi, nbins)
-    digi = np.digitize(y, bins)
-    diff = np.diff(digi, append=0)
-    bounds = np.arange(len(y))[(diff != 0)]
-    for s, e in zip(bounds[:-1], bounds[1:]):
-        Y = y[s:e]
-        if lo < np.median(Y) < hi:
-            yield t[s:e], Y
-
-
-@partial
-@cutoff
-def threshold(t, y, *, lo, hi, tol=0):
+def threshold(t, y, *, lo: float, hi: float, tol: float=0):
     """
     Segment into consecutive pieces between lo and hi
     """
@@ -216,7 +229,7 @@ def threshold(t, y, *, lo, hi, tol=0):
 
 
 @partial
-def trim(t, y, *, left=0, right=1):
+def trim(t, y, *, left: int=0, right: int=1):
     """
     Trim off part of the segment
     :param left: samples to trim off on the left, can use seconds if multiplied by fs
@@ -229,7 +242,7 @@ def trim(t, y, *, left=0, right=1):
 
 @partial
 @cutoff
-def levels(t, y, *, n, tol=0, sortby='mean'):
+def levels(t, y, *, n: int, tol: float=0, sortby: str='mean'):
     """
     Detect levels by fitting to a gaussian mixture model with n components.
     tol is a tolerance parameter between 0-1 that smoothens the prediction probabilities
@@ -265,10 +278,8 @@ def levels(t, y, *, n, tol=0, sortby='mean'):
         yield t[s:e], y[
                       s:e], l  # This is the way to smuggle out extra information without having access to the segment yet
 
-# TODO properly implement porepipe exception classes
-class StageError(Exception): pass
-
-def volt(c, v):
+@partial
+def volt(t,y,*,abf: ABF,v: float):
     """
     Given the control voltage array and a target voltage,
     cache start and end indices in a closure that slice the sweep at the target voltage.
@@ -277,22 +288,18 @@ def volt(c, v):
     :param v: (float) target voltage
     :return: function that slices the sweep
     """
+    c = abf.sweepC
     try:
         start, end = np.arange(len(c))[np.diff(c == v, append=0) != 0]
     except ValueError as e:
         raise StageError("volt not in control voltage array") from e
-
-    @wraps(volt)
-    def cached(t, y):
-        yield t[start:end], y[start:end]
-
-    return cached
+    yield t[start:end], y[start:end]
 
 
 @partial
 def by_tag(t: np.ndarray, y: np.ndarray, *, abf: ABF, pattern: str):
     """
-    Segment a gapfree trace by tags matching a pattern.
+    Segment a gapfree nanotrace by tags matching a pattern.
     NOTE: must be used as the first stage otherwise the tag times don't make sense.
 
     :param t: time
