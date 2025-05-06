@@ -3,9 +3,7 @@ from pathlib import Path
 
 import pytest
 from trace import *
-from trace.stages import *
 from trace.features import psd_freq, global_features
-from functools import partial
 
 @pytest.fixture
 def abf_blood():
