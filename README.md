@@ -49,11 +49,11 @@ The pipeline is defined and used through the [Pipeline object](#pipeline-design)
 
 ```python
 # Example:
-from Pipeline import *
+from trace import *
 # This imports Pipeline, ABF, stages and feature extractors
 
-# run `help(porepipe.stages)` to list built-in stages
-# run `help(porepipe.features)` to list built-in feature extractors
+# run `help(trace.stages)` to list built-in stages
+# run `help(trace.features)` to list built-in feature extractors
 
 # Defining the ABF object separately is handy because 
 # we often need access to the sample rate
@@ -124,7 +124,7 @@ Pipeline(
 Extra options can be given when the pipeline is defined by using the `partial` decorator when defining the function like so:
 
 ```python
-from porepipe.decorators import partial
+from trace.decorators import partial
 
 @partial
 def new_stage(t,y,*,extra_argument):
@@ -143,7 +143,7 @@ Pipeline(
 The `cutoff` decorator is used on a many built-in stages to filter out segments that are too short. It can be added to a custom stage like so:
 
 ```python
-from porepipe.decorators import cutoff
+from trace.decorators import cutoff
 
 @cutoff
 def new_stage(t,y):
@@ -163,8 +163,9 @@ The main advantage of using a `Tree` datastructure is that every segment generat
 `Segment.inspect` is a convenience function that plots events (lowest level segments) on top of itself. This way you get an overview of the effect of all the stages downstream of the stage that `inspect` was called on.
 
 ### Example:
+
 ```python
-from porepipe import *
+from trace import *
 
 abf = ABF("../test/test_blood.abf")
 fs = abf.sampleRate
@@ -191,8 +192,9 @@ A custom plotting function is added to the pandas plot wrapper for convience and
 It takes two column names and plots them as a scatter plot where the markers are colored by the density of the datapoints.
 
 ### Example:
+
 ```python
-from porepipe import *
+from trace import *
 
 abf = ABF("../test/test_blood.abf")
 fs = abf.sampleRate

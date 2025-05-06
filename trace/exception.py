@@ -1,5 +1,5 @@
 """
-Exceptions used in porepipe. All inherit from the same base
+Exceptions used in trace. All inherit from the same base
 so it's easier to catch them.
 """
 __copyright__ = """

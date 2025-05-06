@@ -2,9 +2,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from porepipe import *
-from porepipe.stages import *
-from porepipe.features import psd_freq, global_features
+from trace import *
+from trace.stages import *
+from trace.features import psd_freq, global_features
 from functools import partial
 
 @pytest.fixture
