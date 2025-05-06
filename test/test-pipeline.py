@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 from trace import *
-from trace.features import psd_freq, global_features
 
 @pytest.fixture
 def abf_blood():
