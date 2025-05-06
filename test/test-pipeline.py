@@ -2,7 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from trace import *
+from nanotrace import *
 
 @pytest.fixture
 def abf_blood():

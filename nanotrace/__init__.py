@@ -3,9 +3,9 @@ author: Matthijs Tadema
 
 PopePipe:
 ---------
-`trace` is a python library for automated nanopore electrophysiology (1d timeseries)
+`nanotrace` is a python library for automated nanopore electrophysiology (1d timeseries)
 manipulation and feature extraction. The central class is the `Pipeline` class, imported from the main module:
-`from trace import Pipeline`.
+`from nanotrace import Pipeline`.
 The main module also imports ABF from pyabf for convenience.
 Now also imports stages and feature extractors for convenience.
 """

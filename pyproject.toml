@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "trace"
+name = "nanotrace"
 version = "0.0.2.1"
 authors = [
   { name="Matthijs Tadema", email="m.j.tadema@rug.nl" },

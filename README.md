@@ -1,7 +1,7 @@
-![trace logo](figures/trace_logo.png)
+![nanotrace logo](figures/trace_logo.png)
 
-# TRACE — Toolkit for Reproducible Analysis of Conductive Events
-`trace` is a python library for automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction.
+# NanoTRACE — Nanopore Toolkit for Reproducible Analysis of Conductive Events
+`nanotrace` is a python library for automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction.
 
 ## Graphical abstract (very rough, work in progress)
 ![graphical abstract](figures/abstract.png)
@@ -49,11 +49,11 @@ The pipeline is defined and used through the [Pipeline object](#pipeline-design)
 
 ```python
 # Example:
-from trace import *
+from nanotrace import *
 # This imports Pipeline, ABF, stages and feature extractors
 
-# run `help(trace.stages)` to list built-in stages
-# run `help(trace.features)` to list built-in feature extractors
+# run `help(nanotrace.stages)` to list built-in stages
+# run `help(nanotrace.features)` to list built-in feature extractors
 
 # Defining the ABF object separately is handy because 
 # we often need access to the sample rate
@@ -124,7 +124,7 @@ Pipeline(
 Extra options can be given when the pipeline is defined by using the `partial` decorator when defining the function like so:
 
 ```python
-from trace.decorators import partial
+from nanotrace.decorators import partial
 
 @partial
 def new_stage(t,y,*,extra_argument):
@@ -143,7 +143,7 @@ Pipeline(
 The `cutoff` decorator is used on a many built-in stages to filter out segments that are too short. It can be added to a custom stage like so:
 
 ```python
-from trace.decorators import cutoff
+from nanotrace.decorators import cutoff
 
 @cutoff
 def new_stage(t,y):
@@ -165,7 +165,7 @@ The main advantage of using a `Tree` datastructure is that every segment generat
 ### Example:
 
 ```python
-from trace import *
+from nanotrace import *
 
 abf = ABF("../test/test_blood.abf")
 fs = abf.sampleRate
@@ -194,7 +194,7 @@ It takes two column names and plots them as a scatter plot where the markers are
 ### Example:
 
 ```python
-from trace import *
+from nanotrace import *
 
 abf = ABF("../test/test_blood.abf")
 fs = abf.sampleRate

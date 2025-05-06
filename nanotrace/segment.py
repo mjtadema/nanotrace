@@ -50,7 +50,7 @@ def requires_children(f: Callable) -> Callable:
 
 class Node(NodeMixin):
     """
-    Generic tree node class with specific stuff for trace.
+    Generic tree node class with specific stuff for nanotrace.
     """
     def __init__(self, stages: list, *, name=None, parent=None):
         """

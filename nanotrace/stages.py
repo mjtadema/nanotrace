@@ -24,7 +24,7 @@ Currently implemented stages:
     you can use this to calculate how many _seconds_ to trim off each side using `nseconds * fs`.
 
  `switch()`                        :
-    Segment a gapfree trace based on large, short, current spikes cause by manual voltage switching.
+    Segment a gapfree nanotrace based on large, short, current spikes cause by manual voltage switching.
 
  `threshold(lo,hi)`                :
     Segment an input segment by consecutive stretches of current between `lo` and `hi`.
@@ -37,7 +37,7 @@ Currently implemented stages:
     are labeled, can be sorted by "mean" or by "weight" (weight being the height of the gaussian).
 
  `volt(c, v)` :
-    Select a part of a trace where the voltage `v` matches the control voltage array `c`.
+    Select a part of a nanotrace where the voltage `v` matches the control voltage array `c`.
 
 Custom stages:
 --------------
@@ -99,6 +99,9 @@ from sklearn.mixture import GaussianMixture
 
 from .exception import StageError
 from .decorators import partial, cutoff
+# from .src import cusum as _do_cusum
+def _do_cusum(): pass
+
 
 
 # Utilities
@@ -141,12 +144,34 @@ def smooth_pred(y, fit_, tol):
     return pred
 
 
+@partial
+@cutoff
+def cusum(t, y, *, w: float, T: float):
+    """
+    Use a CUSUM based method to detect continuous segments above T (threshold)
+    :param w: weight
+    :param T: threshold
+    """
+    Z = y / np.std(y)
+    S = np.empty(Z.shape, dtype=np.float32)
+    for i in range(1, len(Z)):
+        x = S[i - 1]
+        z = Z[i]
+        S[i] = x - z - w
+    mask = S > T
+    diff = np.diff(mask, prepend=0, append=0)
+    start = np.arange(len(diff))[diff == 1]
+    end = np.arange(len(diff))[diff == -1]
+    for s, e in zip(start, end):
+        yield t[s:e], y[s:e]
+
+
 
 @partial
 @cutoff
 def switch(t, y):
     """
-    Segment a raw trace based on manual voltage switch spikes
+    Segment a raw nanotrace based on manual voltage switch spikes
     """
     hi = np.max(y) / 1.2
     lo = np.min(y) / 1.2
@@ -274,7 +299,7 @@ def volt(t,y,*,abf: ABF,v: float):
 @partial
 def by_tag(t: np.ndarray, y: np.ndarray, *, abf: ABF, pattern: str):
     """
-    Segment a gapfree trace by tags matching a pattern.
+    Segment a gapfree nanotrace by tags matching a pattern.
     NOTE: must be used as the first stage otherwise the tag times don't make sense.
 
     :param t: time
