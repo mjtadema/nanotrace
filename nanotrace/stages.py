@@ -166,6 +166,16 @@ def cusum(t, y, *, w: float, T: float):
         yield t[s:e], y[s:e]
 
 
+@partial #Resample the data such that the time resolution is now "tres" points per second.
+def resample(t, y, *, fs, TimeRes):
+    ResamplingFactor = fs / TimeRes
+    if ResamplingFactor <= 1:
+        print("Warning: Your new time resolution should be smaller than the current one!")
+    ResampledLength = int(len(t)/ResamplingFactor)
+    downsampling = signal.resample(y, ResampledLength, t)
+    #print(downsampling[1])
+    yield downsampling[1], downsampling[0]
+
 
 @partial
 @cutoff
