@@ -26,6 +26,7 @@ from joblib import Parallel, delayed, wrap_non_picklable_objects
 from matplotlib import pyplot as plt
 from pyabf import abfWriter
 from tqdm.auto import tqdm
+from ipywidgets import interact
 
 from .exception import RootError
 
@@ -141,6 +142,12 @@ class Root(Node):
             return events
         else:
             return events[self.post(self.features)]
+
+    def inspect(self):
+        parents = self.by_index[-2]
+        @interact(i=(0, len(parents)-1, 1))
+        def f(i=0):
+            parents[i].inspect()
 
     @property
     def features(self) -> pd.DataFrame:
@@ -293,7 +300,8 @@ class Segment(Node):
         """Plot events on top of self"""
         self.plot(*args, **kwargs)
         if not 'color' in kwargs:
-            kwargs['color'] = 'C1'
+            # kwargs['color'] = 'C1'
+            pass
         for event in self.events:
             event.plot(*args, **kwargs)
 
