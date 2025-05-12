@@ -156,22 +156,24 @@ class Root(Node):
             # but requires some more bookkeeping to restructure the dataframe
             features = []
             columns = []
-            for extractor in self.extractors:
-                # joblib.Parallel takes a generator
-                extracted = Parallel(n_jobs=self.n_jobs)(
-                    # That is called using joblib.delayed          with these arguments
-                    delayed(wrap_non_picklable_objects(extractor))(event.t, event.y)
-                    # For each event in this iterable
-                    for event in tqdm(events,           # by using tqdm in the generator we can monitor progress
-                        desc="extracting features %s" % extractor.__name__)
-                )
-                extracted = np.asarray(extracted)
-                if len(extracted.shape) > 1:
-                    columns.extend([extractor.__name__ + '_%d' % i for i in range(extracted.shape[-1])])
-                    features.extend([*extracted.T])
-                else:
-                    columns.append(extractor.__name__)
-                    features.append(extracted)
+            with tqdm(total=len(self.extractors)*len(self.events), desc="Calculating features") as progress:
+                for extractor in self.extractors:
+                    # joblib.Parallel takes a generator
+                    extracted = Parallel(n_jobs=self.n_jobs)(
+                        # That is called using joblib.delayed          with these arguments
+                        delayed(wrap_non_picklable_objects(extractor))(event.t, event.y)
+                        # For each event in this iterable
+                        for event in events           # by using tqdm in the generator we can monitor progress
+                            #desc="extracting features %s" % extractor.__name__)
+                    )
+                    extracted = np.asarray(extracted)
+                    if len(extracted.shape) > 1:
+                        columns.extend([extractor.__name__ + '_%d' % i for i in range(extracted.shape[-1])])
+                        features.extend([*extracted.T])
+                    else:
+                        columns.append(extractor.__name__)
+                        features.append(extracted)
+                    progress.update(len(self.events))
 
 
             # if events have a label (event.l), add it to features
