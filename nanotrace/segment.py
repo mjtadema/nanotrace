@@ -33,21 +33,6 @@ logger = logging.getLogger(__name__)
 
 name_resolver = Resolver('name')
 
-def requires_children(f: Callable) -> Callable:
-    """
-    Used in root nodes to generate children before they are accessed.
-    """
-
-    @wraps(f)
-    def wrapper(self, *args, **kwargs) -> Any:
-        if not self.children:
-            # Generate the tree
-            self._run_stage()
-        return f(self, *args, **kwargs)
-
-    return wrapper
-
-
 class Node(NodeMixin):
     """
     Generic tree node class with specific stuff for nanotrace.
@@ -94,7 +79,6 @@ class Node(NodeMixin):
         return '\n'.join(out)
 
     @property
-    @requires_children
     def by_index(self) -> list[Any]:
         """
         :return: a list of nodes grouped by level
@@ -135,7 +119,6 @@ class Root(Node):
         return self.pipe.n_jobs
 
     @property
-    @requires_children
     def by_name(self) -> dict[str, tuple[Segment]]:
         """
         :return: a dict of tuples containing nodes grouped by stage
@@ -149,8 +132,6 @@ class Root(Node):
         }
 
     @property
-    @requires_children
-
     def events(self) -> np.ndarray:
         """
         :return: segments from the lowest level as array
@@ -271,12 +252,12 @@ class Segment(Node):
                 if i == self.n_segments:
                     break
 
-    @NodeMixin.children.getter
+    @Node.children.getter
     def children(self):
         """Lazily run self._run_stage if there are no children"""
-        if not NodeMixin.children.fget(self):
+        if not Node.children.fget(self):
             self._run_stage()
-        return NodeMixin.children.fget(self)
+        return Node.children.fget(self)
 
     # "Inherit" these properties from the root node
     @property
@@ -288,7 +269,6 @@ class Segment(Node):
         return self.root.n_segments
 
     @property
-    @requires_children
     def events(self) -> np.ndarray:
         """
         :return: segments from the lowest level as array
