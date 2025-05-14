@@ -255,11 +255,14 @@ class Segment(Node):
             # logger.debug("Segmenting with %s", self.stage.__name__)
             if self.n_segments > 0:
                 logger.info(f"Generating {self.n_segments}")
-            for i, (t, y, *l) in enumerate(self.stage(self.t, self.y)):
-                seg = Segment(t, y, l, stages=self.residual, name=self.stage.__name__)
-                seg.parent = self
-                if i == self.n_segments:
-                    break
+            try:
+                for i, (t, y, *l) in enumerate(self.stage(self.t, self.y)):
+                    seg = Segment(t, y, l, stages=self.residual, name=self.stage.__name__)
+                    seg.parent = self
+                    if i == self.n_segments:
+                        break
+            except:
+                print("Stage %s failed"%self.stage.__name__)
 
     @Node.children.getter
     def children(self):
