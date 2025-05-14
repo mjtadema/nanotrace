@@ -4,8 +4,8 @@ authors:
 - family-names: "Tadema"
   given-names: "Matthijs Jonathan"
   orcid: "https://orcid.org/0000-0003-0376-8528"
-title: "porepipe"
-version: 1.0.0-alpha
+title: "nanotrace"
+version: 1.0.0
 doi: not yet requested
 date-released: 2025-03-20
-url: "https://github.com/mjtadema/porepipe"
+url: "https://github.com/mjtadema/nanotrace"
