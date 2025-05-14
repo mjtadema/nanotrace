@@ -213,7 +213,7 @@ def as_ires(t, y, min_amplitude: int=0, max_amplitude: int=200, min_samples: int
 
 @partial
 @cutoff
-def threshold(t, y, *, lo: float, hi: float, tol: float=0):
+def threshold(t, y, *, lo: float=0, hi: float, tol: float=0):
     """
     Segment into consecutive pieces between lo and hi
     """
