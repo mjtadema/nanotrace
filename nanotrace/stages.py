@@ -104,7 +104,7 @@ from .decorators import partial, cutoff
 
 
 # Utilities
-def baseline(y, min_samples, min_amplitude=0, max_amplitude=500) -> tuple[float, float]:
+def baseline(y, min_samples=1000, min_amplitude=0, max_amplitude=500) -> tuple[float, float]:
     """
     Automatic baseline calculation
     :param y: current array
@@ -234,7 +234,7 @@ def as_iex(t,y, **kwargs):
 @partial
 def as_ires(t, y, min_amplitude: int=0, max_amplitude: int=200, min_samples: int=1000):
     """Calculate Ires using an automatic baseline calculation"""
-    bl, _ = baseline(y, min_samples, min_amplitude=min_amplitude, max_amplitude=max_amplitude)
+    bl, _ = baseline(y, min_samples=min_samples, min_amplitude=min_amplitude, max_amplitude=max_amplitude)
     try:
         yield t, y / bl
     except IndexError:
