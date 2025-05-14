@@ -20,7 +20,7 @@ from scipy.stats import gaussian_kde
 
 def dens2d(self, col1: str, col2: str, *args, **kwargs):
     """Wrapper around plot kind 'scatter' where the markers are colored by kde"""
-    df = np.asarray(self._parent.loc[:,[col1,col2]])
+    df = np.asarray(self._parent.loc[:,[col1,col2]].dropna()) # NOTE: not sure if we should just silently drop nan...
     feat = np.asarray(df).T
     k = gaussian_kde(feat)
     Z = k(feat)
