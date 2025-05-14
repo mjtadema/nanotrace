@@ -240,7 +240,7 @@ def as_ires(t, y, min_amplitude: int=0, max_amplitude: int=200, min_samples: int
 @partial
 @wraps(as_ires)
 def as_iex(t,y, **kwargs):
-    yield t, 1-next(as_ires(**kwargs)(t,y))
+    yield t, 1-next(as_ires(**kwargs)(t,y))[1]
 
 
 @partial
