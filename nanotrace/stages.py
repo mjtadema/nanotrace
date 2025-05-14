@@ -143,6 +143,13 @@ def smooth_pred(y, fit_, tol):
     return pred
 
 
+@partial
+def size(t,y,*,min=0,max=np.inf):
+    """Specify a minimum and maximum size for a segment"""
+    if min < len(t) < max:
+        yield t,y
+
+
 @njit  # jit compiled for speed, much easier to deal with than cython
 def lower_cusum(y, *, mu: float = None, sigma: float = None,
                 omega: float = 0, c: float = 9999) -> np.ndarray:
