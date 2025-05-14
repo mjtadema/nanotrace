@@ -27,7 +27,8 @@ dependencies = [
     "scikit-learn",
     "joblib",
     "tqdm",
-    "numba"
+    "numba",
+    "ipywidgets"
 ]
 
 
