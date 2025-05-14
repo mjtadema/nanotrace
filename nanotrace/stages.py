@@ -96,12 +96,10 @@ from pyabf import ABF
 from scipy import signal
 from scipy.signal import find_peaks, fftconvolve
 from sklearn.mixture import GaussianMixture
+from numba import njit
 
 from .exception import StageError
 from .decorators import partial, cutoff
-# from .src import cusum as _do_cusum
-def _do_cusum(): pass
-
 
 
 # Utilities
@@ -144,26 +142,53 @@ def smooth_pred(y, fit_, tol):
     return pred
 
 
+@njit  # jit compiled for speed, much easier to deal with than cython
+def lower_cusum(y, *, mu: float = None, sigma: float = None,
+                omega: float = 0, c: float = 9999) -> np.ndarray:
+    """
+    Calculate the lower cusum value over time
+
+    :param y: data
+    :param mu: target mean
+    :param sigma: target S.D.
+    :param omega: tunable critical level parameter
+    :param c: optional ceiling to avoid runaway values
+    :return: array of cusum control values
+    """
+    if mu is None:
+        mu = np.mean(y)
+    if sigma is None:
+        sigma = np.std(y)
+    Z = (y - mu) / sigma  # scaling
+    # Pre-allocated numpy array for speed
+    S = np.empty(Z.shape)
+    S[0] = 0
+    for i, (s, z) in enumerate(zip(S[:-1], Z[1:])):
+        S[i + 1] = max(0, min(s - z - omega, c))
+    return S
+
+
 @partial
 @cutoff
-def cusum(t, y, *, w: float, T: float):
-    """
-    Use a CUSUM based method to detect continuous segments above T (threshold)
-    :param w: weight
-    :param T: threshold
-    """
-    Z = y / np.std(y)
-    S = np.empty(Z.shape, dtype=np.float32)
-    for i in range(1, len(Z)):
-        x = S[i - 1]
-        z = Z[i]
-        S[i] = x - z - w
-    mask = S > T
-    diff = np.diff(mask, prepend=0, append=0)
-    start = np.arange(len(diff))[diff == 1]
-    end = np.arange(len(diff))[diff == -1]
-    for s, e in zip(start, end):
-        yield t[s:e], y[s:e]
+def cusum(t,y,*,mu=1,omega=10,wlen=10,c=20):
+    # Compress the baseline signal for a cheap speed-up
+    _, sigma = baseline(y)
+    kernel = np.full((wlen,), 1/wlen)
+    smooth = fftconvolve(y, kernel, mode='same')
+    try:
+        my = np.ma.masked_where(np.abs(smooth-1) < sigma, y)
+    except TypeError:
+        raise StageError
+    mt = np.ma.array(t, mask=my.mask)
+    # Calculate lower cusum
+    S = lower_cusum(my.compressed(), mu=mu, sigma=sigma, omega=omega, c=c)
+    # Calculate bounds
+    events = S > c/2
+    bounds = np.diff(events, prepend=0, append=0)
+    starts = np.arange(len(bounds))[(bounds > 0)]
+    ends = np.arange(len(bounds))[(bounds < 0)]
+    for s,e in zip(starts, ends):
+        yield mt.compressed()[s:e], my.compressed()[s:e]
 
 
 
