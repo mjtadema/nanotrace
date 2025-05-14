@@ -201,6 +201,9 @@ def lowpass(t, y, *, cutoff_fq: int, abf: ABF, order: int=10):
     assert len(filt) == len(t)
     yield t, filt
 
+@partial
+def as_iex(t,y, **kwargs):
+    yield t, 1-as_ires(t,y,**kwargs)
 
 @partial
 def as_ires(t, y, min_amplitude: int=0, max_amplitude: int=200, min_samples: int=1000):
