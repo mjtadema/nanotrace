@@ -105,7 +105,7 @@ def _do_cusum(): pass
 
 
 # Utilities
-def baseline(y, minsamples, max_amplitude=500) -> float:
+def baseline(y, min_samples, min_amplitude=0, max_amplitude=500) -> float:
     """
     Automatic baseline calculation
     :param y: current array
@@ -122,7 +122,7 @@ def baseline(y, minsamples, max_amplitude=500) -> float:
     digi = np.digitize(np.abs(y), bins=edges)
     # Determine highest bin over a certain threshold of samples
     # to get rid of spikes
-    i = np.arange(len(counts))[(counts > minsamples) & (bins < max_amplitude)][-1] + 1
+    i = np.arange(len(counts))[(counts > min_samples) & (bins < max_amplitude) & (bins > min_amplitude)][-1] + 1
     return np.median(y[digi == i])
 
 
@@ -203,9 +203,12 @@ def lowpass(t, y, *, cutoff_fq: int, abf: ABF, order: int=10):
 
 
 @partial
-def as_ires(t, y, max_amplitude: int=200, minsamples: int=1000):
+def as_ires(t, y, min_amplitude: int=0, max_amplitude: int=200, min_samples: int=1000):
     """Calculate Ires using an automatic baseline calculation"""
-    yield t, y / baseline(y, minsamples, max_amplitude=max_amplitude)
+    try:
+        yield t, y / baseline(y, min_samples, min_amplitude=min_amplitude, max_amplitude=max_amplitude)
+    except IndexError:
+        pass
 
 
 @partial
