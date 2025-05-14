@@ -172,7 +172,7 @@ def lower_cusum(y, *, mu: float = None, sigma: float = None,
 @partial
 @cutoff
 def cusum(t,y,*,mu=1,omega=10,wlen=10,c=20):
-    # Compress the baseline signal for a cheap speed-up
+    # Compress the baseline signal for an inexpensive speed-up
     _, sigma = baseline(y)
     kernel = np.full((wlen,), 1/wlen)
     smooth = fftconvolve(y, kernel, mode='same')
@@ -180,16 +180,17 @@ def cusum(t,y,*,mu=1,omega=10,wlen=10,c=20):
         my = np.ma.masked_where(np.abs(smooth-1) < sigma, y)
     except TypeError:
         raise StageError
-    mt = np.ma.array(t, mask=my.mask)
+    mt = t[~my.mask]
+    my = my.compressed() # This way we copy part of the data one time
     # Calculate lower cusum
-    S = lower_cusum(my.compressed(), mu=mu, sigma=sigma, omega=omega, c=c)
+    S = lower_cusum(my, mu=mu, sigma=sigma, omega=omega, c=c)
     # Calculate bounds
     events = S > c/2
     bounds = np.diff(events, prepend=0, append=0)
     starts = np.arange(len(bounds))[(bounds > 0)]
     ends = np.arange(len(bounds))[(bounds < 0)]
     for s,e in zip(starts, ends):
-        yield mt.compressed()[s:e], my.compressed()[s:e]
+        yield mt[s:e], my[s:e]
 
 
 
