@@ -105,13 +105,13 @@ def _do_cusum(): pass
 
 
 # Utilities
-def baseline(y, min_samples, min_amplitude=0, max_amplitude=500) -> float:
+def baseline(y, min_samples, min_amplitude=0, max_amplitude=500) -> tuple[float, float]:
     """
     Automatic baseline calculation
     :param y: current array
     :param minsamples: minimum number of samples that must be in the bin
     :param max_amplitude: maximum amplitude to consider as baseline
-    :return: baseline
+    :return: median baseline, S.D.
     """
     # Divide data into bins, with log spacing
     # Get rid of the polarity in the calculation
@@ -123,7 +123,7 @@ def baseline(y, min_samples, min_amplitude=0, max_amplitude=500) -> float:
     # Determine highest bin over a certain threshold of samples
     # to get rid of spikes
     i = np.arange(len(counts))[(counts > min_samples) & (bins < max_amplitude) & (bins > min_amplitude)][-1] + 1
-    return np.median(y[digi == i])
+    return np.median(y[digi == i]), np.std(y[digi == i])
 
 
 def smooth_pred(y, fit_, tol):
@@ -205,8 +205,9 @@ def lowpass(t, y, *, cutoff_fq: int, abf: ABF, order: int=10):
 @partial
 def as_ires(t, y, min_amplitude: int=0, max_amplitude: int=200, min_samples: int=1000):
     """Calculate Ires using an automatic baseline calculation"""
+    bl, _ = baseline(y, min_samples, min_amplitude=min_amplitude, max_amplitude=max_amplitude)
     try:
-        yield t, y / baseline(y, min_samples, min_amplitude=min_amplitude, max_amplitude=max_amplitude)
+        yield t, y / bl
     except IndexError:
         pass
 
