@@ -268,7 +268,7 @@ class Segment(Node):
                     if i == self.n_segments:
                         break
             except:
-                print("Stage %s failed"%self.stage.__name__)
+                logger.warning("Stage %s failed"%self.stage.__name__)
 
     @Node.children.getter
     def children(self):
