@@ -138,6 +138,8 @@ class Root(Node):
         :return: segments from the lowest level as array
         """
         events = np.asarray(self.by_index[-1])
+        for i, event in enumerate(events):
+            event.__index__ = i
         if self.post is None:
             return events
         else:
