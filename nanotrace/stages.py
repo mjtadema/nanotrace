@@ -114,8 +114,8 @@ def baseline(y, min_samples=1000, min_amplitude=0, max_amplitude=500) -> tuple[f
     """
     # Divide data into bins, with log spacing
     # Get rid of the polarity in the calculation
-    nbins = 20
-    counts, edges = np.histogram(np.abs(y), bins=(np.logspace(0, 3, nbins)))
+    nbins = 10
+    counts, edges = np.histogram(np.abs(y), bins=(np.linspace(0, 1000, nbins)))
     bins = np.array([a+b/2 for a,b in zip(edges[:-1], edges[1:])])
     # Digitize based on the same bins
     digi = np.digitize(np.abs(y), bins=edges)
