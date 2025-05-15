@@ -167,7 +167,7 @@ def lower_cusum(y, *, mu: float = None, sigma: float = None,
         mu = np.mean(y)
     if sigma is None:
         sigma = np.std(y)
-    Z = (y - mu) / sigma  # scaling
+    Z = (y - mu) / sigma**2  # scaling
     # Pre-allocated numpy array for speed
     S = np.empty(Z.shape)
     S[0] = 0
