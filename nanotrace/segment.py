@@ -145,8 +145,8 @@ class Root(Node):
         else:
             return events[self.post(self.features)]
 
-    def inspect(self):
-        parents = self.by_index[-2]
+    def inspect(self, stage: str):
+        parents = self.by_name[stage]
         @interact(i=(0, len(parents)-1, 1))
         def f(i=0):
             parents[i].inspect()
