@@ -104,26 +104,53 @@ from .decorators import partial, cutoff
 
 
 # Utilities
-def baseline(y, min_samples=1000, min_amplitude=0, max_amplitude=500) -> tuple[float, float]:
-    """
-    Automatic baseline calculation
-    :param y: current array
-    :param minsamples: minimum number of samples that must be in the bin
-    :param max_amplitude: maximum amplitude to consider as baseline
-    :return: median baseline, S.D.
-    """
-    # Divide data into bins, with log spacing
-    # Get rid of the polarity in the calculation
-    nbins = 10
-    counts, edges = np.histogram(np.abs(y), bins=(np.linspace(0, 1000, nbins)))
-    bins = np.array([a+b/2 for a,b in zip(edges[:-1], edges[1:])])
-    # Digitize based on the same bins
-    digi = np.digitize(np.abs(y), bins=edges)
-    # Determine highest bin over a certain threshold of samples
-    # to get rid of spikes
-    i = np.arange(len(counts))[(counts > min_samples) & (bins < max_amplitude) & (bins > min_amplitude)][-1] + 1
-    return np.median(y[digi == i]), np.std(y[digi == i])
+def reject_outliers(data, m = 3.5):
+    d = np.abs(data - np.median(data))
+    mdev = np.median(d)
+    s = d/mdev if mdev else np.zeros(len(d))
+    return s<m
 
+
+def baseline(y, min_samples=1000, min_amplitude=50, max_amplitude=150) -> tuple[float, float]:
+    """
+    Calculate baseline between a specified range.
+    Outliers are rejected using MAD criteria.
+    median and standard deviation of baseline are returned
+    """
+    thres = (min_amplitude < y) & (y < max_amplitude)
+    inliers = reject_outliers(y[thres], m=2)
+    clean = y[thres][inliers]
+    if len(clean) >= min_samples:
+        return np.median(clean), np.std(clean)
+
+
+def baseline_from_sweeps(abf, nbins=10, maxfail=0.5, **kwargs):
+    """
+    Try to calculate the baseline from each sweep,
+    then bin them and take the mean of the highest bin.
+    This avoids baseline miscalculation when there is little to no
+    baseline present.
+    """
+    baselines = []
+    fails = 0
+    for i in range(abf.sweepCount):
+        abf.setSweep(i)
+        try:
+            bl, sd = baseline(abf.sweepY, **kwargs)
+            baselines.append((bl, sd))
+        except (TypeError, IndexError) as e:
+            fails += 1
+            if fails > abf.sweepCount * maxfail:
+                raise Exception("too many baseline failures") from e
+
+    baselines = np.asarray(baselines)
+
+    counts, edges = np.histogram(baselines, bins=nbins)
+    bins = np.array([a + b / 2 for a, b in zip(edges[:-1], edges[1:])])
+
+    digi = np.digitize(baselines[:, 0], bins=bins)
+    highest = baselines[digi == max(digi)]
+    return np.mean(highest, axis=0)
 
 def smooth_pred(y, fit_, tol):
     """
