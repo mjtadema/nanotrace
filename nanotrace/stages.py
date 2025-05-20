@@ -178,18 +178,24 @@ def lower_cusum(y, *, mu: float = None, sigma: float = None,
 
 @partial
 @cutoff
-def cusum(t,y,*,mu=1,omega=10,wlen=10,c=20):
+def cusum(t,y,*,mu=1,omega=10,wlen=0,c=20):
     # Compress the baseline signal for an inexpensive speed-up
-    _, sigma = baseline(y)
-    kernel = np.full((wlen,), 1/wlen)
-    smooth = fftconvolve(y, kernel, mode='same')
-    try:
-        my = np.ma.masked_where(np.abs(smooth-1) < sigma, y)
-    except TypeError:
-        raise StageError
-    mt = t[~my.mask]
-    my = my.compressed() # This way we copy part of the data one time
+    if wlen > 0:
+        kernel = norm.pdf(np.linspace(-s,s,wlen))
+        kernel /= sum(kernel)
+        smooth = fftconvolve(y, kernel, mode='same')
+        bl, sigma = baseline(y)
+        try:
+            my = np.ma.masked_where(np.abs(smooth-mu) < sigma, y)
+        except TypeError:
+            raise StageError
+        mt = t[~my.mask]
+        my = my.compressed() # This way we copy part of the data one time
+    else:
+        mt = t
+        my = y
     # Calculate lower cusum
+    mu, sigma = baseline(my)
     S = lower_cusum(my, mu=mu, sigma=sigma, omega=omega, c=c)
     # Calculate bounds
     events = S > c/2
@@ -237,9 +243,10 @@ def lowpass(t, y, *, cutoff_fq: int, abf: ABF, order: int=10):
 
 
 @partial
-def as_ires(t, y, min_amplitude: int=0, max_amplitude: int=200, min_samples: int=1000):
+def as_ires(t, y, bl='auto', min_amplitude: int=0, max_amplitude: int=200, min_samples: int=1000):
     """Calculate Ires using an automatic baseline calculation"""
-    bl, _ = baseline(y, min_samples=min_samples, min_amplitude=min_amplitude, max_amplitude=max_amplitude)
+    if bl == 'auto':
+        bl, _ = baseline(y, min_samples=min_samples, min_amplitude=min_amplitude, max_amplitude=max_amplitude)
     try:
         yield t, y / bl
     except IndexError:
