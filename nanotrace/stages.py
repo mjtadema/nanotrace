@@ -204,34 +204,18 @@ def lower_cusum(y, *, mu: float = None, sigma: float = None,
 
 
 @partial
-@cutoff
-def cusum(t,y,*,mu=1,omega=10,wlen=0,c=20):
-    # Compress the baseline signal for an inexpensive speed-up
-    if wlen > 0:
-        kernel = norm.pdf(np.linspace(-s,s,wlen))
-        kernel /= sum(kernel)
-        smooth = fftconvolve(y, kernel, mode='same')
-        bl, sigma = baseline(y)
-        try:
-            my = np.ma.masked_where(np.abs(smooth-mu) < sigma, y)
-        except TypeError:
-            raise StageError
-        mt = t[~my.mask]
-        my = my.compressed() # This way we copy part of the data one time
-    else:
-        mt = t
-        my = y
-    # Calculate lower cusum
-    mu, sigma = baseline(my)
-    S = lower_cusum(my, mu=mu, sigma=sigma, omega=omega, c=c)
-    # Calculate bounds
-    events = S > c/2
-    bounds = np.diff(events, prepend=0, append=0)
-    starts = np.arange(len(bounds))[(bounds > 0)]
-    ends = np.arange(len(bounds))[(bounds < 0)]
-    for s,e in zip(starts, ends):
-        yield mt[s:e], my[s:e]
-
+def cusum(t,y,*,mu,sigma,omega,c):
+    """
+    Forward cusum to find start,
+    reverse cusum to find end.
+    medium events with s.d. ~5% of baseline: omega ~200, c ~1000
+    """
+    S = lower_cusum(y, mu=mu, sigma=sigma, omega=omega, c=c)
+    Sr = lower_cusum(y[::-1], mu=mu, sigma=sigma, omega=omega, c=c)[::-1]
+    start = np.arange(len(y))[np.diff(S > c/2, append=0)==1]
+    end = np.arange(len(y))[np.diff(Sr > c/2, append=0)==-1]
+    for s,e in zip(start,end):
+        yield t[s:e], y[s:e]
 
 
 @partial
