@@ -41,7 +41,7 @@ class Pipeline:
         ```
     """
 
-    def __init__(self, *stages, n_jobs=1, **kwargs) -> None:
+    def __init__(self, *stages, n_jobs=1, features=None, **kwargs) -> None:
         """
         A pipeline is constructed as a linear list of pipeline "stages".
 
@@ -51,7 +51,8 @@ class Pipeline:
         # The pipeline instance caches the root segment with the abf file paths as keys
         self._cache = {}
         logger.debug("Constructing pipeline with %d steps: %s", len(stages), ",".join([f.__name__ for f in stages]))
-        self.stages = stages
+        self.stages = list(stages)
+        self.features = features if features is not None else []
         self.n_jobs = n_jobs
         self.kwargs = kwargs
 
@@ -62,6 +63,12 @@ class Pipeline:
 
     def __repr__(self) -> str:
         return str(self)
+
+    def __or__(self, other) -> "Pipeline":
+        self._cache = {} # reset cache
+        self.stages.extend(other.stages)
+        self.features.extend(other.features)
+        return self
 
     def __call__(self, source: ABFLike) -> Root:
         """
@@ -80,7 +87,7 @@ class Pipeline:
 
         if not key in self._cache:
             logger.debug("Creating tree from root: %s", key)
-            rt = root(source, self.stages, pipeline=self, **self.kwargs)
+            rt = root(source, self.stages, pipeline=self, features=self.features, **self.kwargs)
             # Absolute file path is used as a key for caching, could use file hash
             self._cache[key] = rt
         logger.debug("Returning cached tree")
