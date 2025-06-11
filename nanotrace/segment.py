@@ -49,6 +49,7 @@ class Node(NodeMixin):
         self.stages = stages
         self.name = name
         self.parent = parent
+        self.idx = None
 
         # Consume part of the pipeline stages
         logger.debug(f"{stages=}")
@@ -60,6 +61,9 @@ class Node(NodeMixin):
             self.stage = None
             self.residual = []
         logger.debug(f"{self.stage=}, {self.residual=}")
+
+    def __index__(self):
+        return self.idx
 
     def __repr__(self):
         """Fancy tree rendering"""
@@ -138,13 +142,15 @@ class Root(Node):
         :return: segments from the lowest level as array
         """
         events = np.asarray(self.by_index[-1])
+        for i, event in enumerate(events):
+            event.idx = i
         if self.post is None:
             return events
         else:
             return events[self.post(self.features)]
 
-    def inspect(self):
-        parents = self.by_index[-2]
+    def inspect(self, stage: str):
+        parents = self.by_name[stage]
         @interact(i=(0, len(parents)-1, 1))
         def f(i=0):
             parents[i].inspect()
