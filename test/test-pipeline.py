@@ -2,7 +2,25 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from nanotrace import *
+import numpy as np
+
+from nanotrace import Pipeline, ABF
+from nanotrace.stages import (
+    volt,
+    lowpass,
+    trim,
+    as_ires,
+    threshold,
+    levels,
+    baseline_from_sweeps,
+    cusum,
+    size
+)
+from nanotrace.features import (
+    global_features,
+    psd_freq,
+    peptide_fit
+)
 
 @pytest.fixture
 def abf_blood():
@@ -45,4 +63,23 @@ def test_sublevels():
         n_jobs=4
     )
     pipe(abf).events[0].y = np.array([])
+    assert len(pipe(abf).features) > 0
+
+def test_peptides():
+    abf = ABF("test/test_peptides.abf")
+    fs = abf.sampleRate
+    bl, sd = baseline_from_sweeps(abf, min_amplitude=30, max_amplitude=100)
+    first = Pipeline(
+        # by_tag(abf=abf, pattern=f" {select.iloc[i].v} mV"), # find segments of the trace where the tag matches the pattern (150mV)
+        volt(abf=abf, v=150),
+        trim(left=0.5 * fs, right=0.5 * fs),  # trim off the ends of the segments where the current ramps up or down
+        lowpass(cutoff_fq=10e3, abf=abf),  # pass the segment through a lowpass filter at 10kHz
+        as_ires(bl=bl),  # detect the baseline between the min and max amplitudes and calculate Ires
+    )
+    second = Pipeline(
+        cusum(mu=1, sigma=sd / bl, omega=60, c=200),  # event detection using cusum method
+        size(min=1e-4 * fs, max=1 * fs),  # filter events by size
+        features=[peptide_fit]
+    )
+    pipe = first | second
     assert len(pipe(abf).features) > 0
