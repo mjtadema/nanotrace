@@ -129,3 +129,59 @@ for f in (median, mean, std, _min, _max, _skew):
     pf = ft.partial(split, func=f, n=8)
     pf.__name__ = f.__name__ + '_split'
     sequence_features.append(pf)
+
+
+def index_base(y):
+    """
+    Get the index of the base array y originates from
+    """
+    d = np.diff( # diff to get starts and ends of segments
+        np.any( # get where each absolute difference is 0
+            abs(
+                # Subtract start and end value from the base
+                y.base[:,None] - y[None,(0,-1)]
+            ) == 0,
+            axis=1),
+        append=0)
+    start = np.arange(len(d))[d==1][0]
+    end = np.arange(len(d))[d==-1][-1]
+    if end-start != len(y): raise Exception("could not find segment")
+    return start,end
+
+
+def gNDF(x, A, x0, sigma, B, C):
+    """
+    :param A: baseline
+    :param x0: event location
+    :param sigma: sigma of the distribution
+    :param C: event block
+    """
+    E = -(np.abs(x - x0) / (2*sigma))**B
+    return A*np.exp(E) + C
+
+
+@catch_errors(n=3)
+def peptide_fit(t,y):
+    # expand the event to include some baseline for fitting
+    s,e = index_base(y)
+    l = e-s
+    # Expand by twice the event length
+    y = y.base[s-2*l:e+2*l].astype(np.float64)
+    t = t.base[s-2*l:e+2*l].astype(np.float64)
+    if len(y) > 5000:
+        y,t = scipy.signal.resample(y, num=5000, t=t)
+    # Estimate parameters
+    x0 = np.mean(t)
+    sigma = float(max(t)-min(t)) / 3
+    beta = -2.72
+    c = max(0,np.min(y))
+    a = 1-c
+    # Fit gNDF (doi 10.1021/acsomega.2c00871)
+    popt, pcov = scipy.optimize.curve_fit(gNDF, t, y, p0=[a,x0,sigma,beta,c], maxfev=100, bounds=([0,t.min(),0,-np.inf,0],[1,t.max(),1,0,1]))
+    a, x0, sigma, beta, c = popt
+    # Calculate the dwelltime
+    dt = 2 * sigma * scipy.special.gamma((1 / beta) + 1)
+    # Return event characteristics mean block, log(dt) and sd
+    yfit = gNDF(t, *popt)
+    sd = np.std((y - yfit)[(x0-dt < t) & (t < x0+dt)])
+    return c, np.log(dt), sd
