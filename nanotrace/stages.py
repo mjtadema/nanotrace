@@ -209,8 +209,10 @@ def cusum(t,y,*,mu,sigma,omega,c):
     Forward cusum to find start,
     reverse cusum to find end.
     medium events with s.d. ~5% of baseline: omega ~200, c ~1000
+    short events with s.d. ~5% baseline: omega 60, c 200
     """
     S = lower_cusum(y, mu=mu, sigma=sigma, omega=omega, c=c)
+    # Reverse cusum to find ends
     Sr = lower_cusum(y[::-1], mu=mu, sigma=sigma, omega=omega, c=c)[::-1]
     start = np.arange(len(y))[np.diff(S > c/2, append=0)==1]
     end = np.arange(len(y))[np.diff(Sr > c/2, append=0)==-1]
