@@ -79,7 +79,9 @@ def test_peptides():
     second = Pipeline(
         cusum(mu=1, sigma=sd / bl, omega=60, c=200),  # event detection using cusum method
         size(min=1e-4 * fs, max=1 * fs),  # filter events by size
-        features=[peptide_fit]
+        features=[peptide_fit],
+        n_segments=30,
+        n_jobs=4
     )
     pipe = first | second
     assert len(pipe(abf).features) > 0
