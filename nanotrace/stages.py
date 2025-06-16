@@ -100,7 +100,7 @@ from sklearn.mixture import GaussianMixture
 from numba import njit
 
 from .exception import StageError
-from .decorators import partial, cutoff
+from .decorators import partial
 
 
 # Utilities
@@ -221,7 +221,6 @@ def cusum(t,y,*,mu,sigma,omega,c):
 
 
 @partial
-@cutoff
 def switch(t, y):
     """
     Segment a raw nanotrace based on manual voltage switch spikes
@@ -272,7 +271,6 @@ def as_iex(t,y, **kwargs):
 
 
 @partial
-@cutoff
 def threshold(t, y, *, lo: float=0, hi: float, tol: float=0):
     """
     Segment into consecutive pieces between lo and hi
@@ -304,7 +302,6 @@ def trim(t, y, *, left: int=0, right: int=1):
 
 
 @partial
-@cutoff
 def levels(t, y, *, n: int, tol: float=0, sortby: str='mean'):
     """
     Detect levels by fitting to a gaussian mixture model with n components.
