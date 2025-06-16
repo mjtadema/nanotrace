@@ -68,6 +68,8 @@ class Pipeline:
         self._cache = {} # reset cache
         self.stages.extend(other.stages)
         self.features.extend(other.features)
+        self.n_jobs = other.n_jobs
+        self.kwargs.update(other.kwargs)
         return self
 
     def __call__(self, source: ABFLike) -> Root:
