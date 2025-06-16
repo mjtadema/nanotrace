@@ -1,5 +1,9 @@
 """
 Implement built-in feature extractors.
+
+Feature extractors are simple functions which must take
+two 1d-arrays (t,y) as arguments, and return one or more values.
+
 Three main classes:
 - Global features
     - can use as `*global_features`
@@ -34,8 +38,10 @@ from typing import Any
 
 import numpy as np
 from numpy import floating
-from scipy.signal import welch, periodogram
-from scipy.stats import gaussian_kde, skew, kurtosis
+from scipy.optimize import curve_fit
+from scipy.signal import welch, periodogram, resample
+from scipy.special import gamma
+from scipy.stats import gaussian_kde, skew as _skew, kurtosis as _kurtosis
 from sklearn.mixture import GaussianMixture
 
 from .decorators import catch_errors, partial
@@ -43,57 +49,65 @@ from .decorators import catch_errors, partial
 logger = logging.getLogger(__name__)
 
 
-# Global features
+### Global features ###
 
 @catch_errors()
 def mean(t: np.ndarray, y: np.ndarray) -> floating[Any]:
+    """Calculate the mean of the y array"""
     return np.mean(y)
 
 
 @catch_errors()
 def std(t: np.ndarray, y: np.ndarray) -> floating[Any]:
+    """Calculate the standard deviation of the y array"""
     return np.std(y)
 
 
 @catch_errors()
 def dt(t: np.ndarray, y: np.ndarray) -> float:
+    """Calculate the total time of a segment"""
     return float(t[-1] - t[0])
 
 
 @catch_errors()
 def ldt(t: np.ndarray, y: np.ndarray) -> floating[Any]:
+    """Calculate the log of the time of the segment"""
     return np.log(dt(t, y))
 
 
 @catch_errors()
 def median(t: np.ndarray, y: np.ndarray) -> floating[Any]:
+    """Calculate the median of y"""
     return np.median(y)
 
 
 @catch_errors()
-def _skew(t: np.ndarray, y: np.ndarray) -> np.ndarray:
+def skew(t: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """Calculate the skewness of y but on a downsampled kde"""
     x = np.linspace(0, 1, 100)
     k = gaussian_kde(y)
-    return skew(k(x))
+    return _skew(k(x))
 
 
 @catch_errors()
 def kurt(t: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """Calculate the kurtosis of y but on a downsampled kde"""
     x = np.linspace(0, 1, 100)
     k = gaussian_kde(y)
-    return kurtosis(k(x))
+    return _kurtosis(k(x))
 
 
 @catch_errors(n=2)
 def clst_means(t: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """Do a gaussian mixture fit with two components and return the means"""
     fit_ = GaussianMixture(n_components=2).fit(y.reshape(-1, 1))
     return np.sort(fit_.means_.flatten())
 
 
-global_features = [mean, std, ldt, median, _skew, kurt, clst_means]
+global_features = [mean, std, ldt, median, skew, kurt, clst_means]
 
 
-# Frequency features
+### Frequency features ###
 
 @partial
 def psd_freq(t: np.ndarray, y: np.ndarray, *, n=8, fs: int) -> np.ndarray:
@@ -108,11 +122,14 @@ def psd_freq(t: np.ndarray, y: np.ndarray, *, n=8, fs: int) -> np.ndarray:
     else:
         fspectr = periodogram
     X, Y = fspectr(y, fs=fs)
+    X = np.asarray(X)
     return X[np.argsort(Y)][::-1][:n]
 
 
-# Sequence features
+### Sequence features ###
+
 def split(t, y, func, n) -> list[tuple[np.ndarray, np.ndarray]]:
+    """Generate functions for split features"""
     return [func(ts, ys) for ts, ys in zip(np.array_split(t, n), np.array_split(y, n))]
 
 
@@ -131,10 +148,11 @@ for f in (median, mean, std, _min, _max, _skew):
     sequence_features.append(pf)
 
 
-def index_base(y):
+def index_base(y: np.ndarray) -> tuple[int, int]:
     """
-    Get the index of the base array y originates from
+    Get the slice of the base array y originates from
     """
+    #TODO move this to a common file once we have more stuff to put there
     d = np.diff( # diff to get starts and ends of segments
         np.any( # get where each absolute difference is 0
             abs(
@@ -143,25 +161,30 @@ def index_base(y):
             ) == 0,
             axis=1),
         append=0)
-    start = np.arange(len(d))[d==1][0]
-    end = np.arange(len(d))[d==-1][-1]
+    start = int(np.arange(len(d))[d==1][0])
+    end = int(np.arange(len(d))[d==-1][-1])
     if end-start != len(y): raise Exception("could not find segment")
     return start,end
 
 
-def gNDF(x, A, x0, sigma, B, C):
+def gNDF(x: np.ndarray, A: float, x0: float, sigma: float, B: float, C: float) -> np.ndarray:
     """
+    Generalized NDF from doi.org/10.1021/acsomega.2c00871
     :param A: baseline
     :param x0: event location
     :param sigma: sigma of the distribution
     :param C: event block
+    :return: NDF over x
     """
     E = -(np.abs(x - x0) / (2*sigma))**B
     return A*np.exp(E) + C
 
 
 @catch_errors(n=3)
-def peptide_fit(t,y):
+def peptide_fit(t: np.ndarray, y: np.ndarray) -> tuple[Any, Any, floating]:
+    """
+    Fit current data from y to the gNDF to characterize peptide blockage events
+    """
     # expand the event to include some baseline for fitting
     s,e = index_base(y)
     l = e-s
@@ -169,18 +192,26 @@ def peptide_fit(t,y):
     y = y.base[s-2*l:e+2*l].astype(np.float64)
     t = t.base[s-2*l:e+2*l].astype(np.float64)
     if len(y) > 5000:
-        y,t = scipy.signal.resample(y, num=5000, t=t)
+        # Resample if y is too large
+        y,t = resample(y, num=5000, t=t)
     # Estimate parameters
     x0 = np.mean(t)
     sigma = float(max(t)-min(t)) / 3
     beta = -2.72
-    c = max(0,np.min(y))
+    c = max(0,np.min(y)) # initial c must be >0
     a = 1-c
     # Fit gNDF (doi 10.1021/acsomega.2c00871)
-    popt, pcov = scipy.optimize.curve_fit(gNDF, t, y, p0=[a,x0,sigma,beta,c], maxfev=100, bounds=([0,t.min(),0,-np.inf,0],[1,t.max(),1,0,1]))
+    popt, pcov, *_ = curve_fit(
+        gNDF, t, y,
+        maxfev=100, # Low limit of function evaluations, if the fit is not fast assume it's a bad fit
+        bounds=(
+            [0, t.min(),     0, -np.inf, 0],  # low
+            [1, t.max(),     1,       0, 1]), # high
+        p0= [a,      x0, sigma,    beta, c]   # initial values
+    )
     a, x0, sigma, beta, c = popt
-    # Calculate the dwelltime
-    dt = 2 * sigma * scipy.special.gamma((1 / beta) + 1)
+    # Calculate the dwelltime using the gamma function
+    dt = 2 * sigma * gamma((1 / beta) + 1)
     # Return event characteristics mean block, log(dt) and sd
     yfit = gNDF(t, *popt)
     sd = np.std((y - yfit)[(x0-dt < t) & (t < x0+dt)])
