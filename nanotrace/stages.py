@@ -238,7 +238,7 @@ def switch(t, y):
 
 
 @partial
-def lowpass(t, y, *, cutoff_fq: int, abf: ABF, order: int=10):
+def lowpass(t: np.ndarray, y: np.ndarray, *, cutoff: int, abf: ABF, order: int=10) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Wrap a lowpass butterworth filter
     :param t:
@@ -248,7 +248,7 @@ def lowpass(t, y, *, cutoff_fq: int, abf: ABF, order: int=10):
     :param order:
     :return:
     """
-    sos = signal.butter(order, cutoff_fq, 'lowpass', fs=abf.sampleRate, output='sos')
+    sos = signal.butter(order, cutoff, 'lowpass', fs=abf.sampleRate, output='sos')
     filt = signal.sosfilt(sos, y)
     assert len(filt) == len(t)
     yield t, filt
