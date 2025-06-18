@@ -14,10 +14,12 @@ This guide covers the following topics:
 3. [Usage example](#usage)
 4. [Available stages](#available-stages)
     1. [Custom stages](#defining-a-custom-stage)
-2. [Inspection and validation](#inspection-and-validation)
-   2. [Example](#example)
-5. [Feature extraction](#feature-extraction)
-   3. [Example](#example-1)
+5. [Inspection and validation](#inspection-and-validation)
+   1. [Example](#example)
+6. [Feature extraction](#feature-extraction)
+   1. [Example](#example-1)
+7. [Compound pipes](#compound-pipes)
+   1. [Example](#example-2)
 
 ## Installation
 1. Ask **Matthijs** for an invite to the private github repository (it's private for now as I want to refine it a bit before I publish it).
@@ -74,29 +76,36 @@ You can also import the pipeline stages using `from porepipe.stages import *`
 Available stages can be listed by running `help(pipeline.stages)` or `?pipeline.stages` in iPython or Jupyter notebook.
 
 ## Available stages
+### Filters
+| Syntax | Description
+|--------|-----------
+|`size(min, max)` | Specify a minimum (`min`) and maximum (`max`) segment size in terms of number of samples. Segments that fall outside of this range are not passed through to any downstream stages.
+
+
 ### Single output segment
 
-| Syntax                             | Description                                                                                                                                                                                                                                          |
-|------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `lowpass(cutoff_fq, fs, order=10)` | Apply a lowpass filter with `cutoff_fq` as the cutoff frequency in Hz, `fs` as the sampling rate and `order` as the order of the filter. The sampling rate can be extracted from an abf file using `ABF().SampleRate`                                |
-| `as_ires(minsamples=1000)`         | Calculate the _residual current_ (Ires) from the baseline. Automatically detects the baseline based on a binning approach. `minsamples` determines how many samples a bin needs to be considered a proper level and not just a fast current "spike". |
-| `trim(left=0, right=1)`            | Trim off this many samples from the `left` or the `right` side.  If the sampling rate was assigned to a variable named `fs`, you can use this to calculate how many _seconds_ to trim off each side using `nseconds * fs`.                           |
+| Syntax                          | Description                                                                                                                                                                                                                                           |
+|---------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `lowpass(cutoff, fs, order=10)` | Apply a lowpass filter with `cutoff` as the cutoff frequency in Hz, `fs` as the sampling rate and `order` as the order of the filter. The sampling rate can be extracted from an abf file using `ABF().SampleRate`                                    |
+| `as_ires(min_samples=1000)`     | Calculate the _residual current_ (Ires) from the baseline. Automatically detects the baseline based on a binning approach. `min_samples` determines how many samples a bin needs to be considered a proper level and not just a fast current "spike". |
+| `as_iex(min_samples=1000)`     | Same as `as_ires` but calculate _excluded current_ (Iex).                                                                                                                                                                                             
+| `trim(left=0, right=1)`         | Trim off this many samples from the `left` or the `right` side.  If the sampling rate was assigned to a variable named `fs`, you can use this to calculate how many _seconds_ to trim off each side using `nseconds * fs`.                            |
 
 ### Multiple output segments
 
-| Syntax                                            | Description                                                                                                                                                                                                                                                                                                                                                                                                           |
-|---------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `switch()`                                        | Segment a gapfree trace based on large, short, current spikes cause by manual voltage switching.                                                                                                                                                                                                                                                                                                                      |
-| `threshold(lo,hi)`                                | Segment an input segment by consecutive stretches of current between `lo` and `hi`.                                                                                                                                                                                                                                                                                                                                   |
-| `levels(n, tol=0, sortby='mean')`                 | Detect sublevels by fitting a [gaussian mixture model](https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html). Use `n` to set the number of gaussians to fit, `tol` is a number between 0 and 1 and controls how much short spikes are tolerated. `sortby` controls how the gaussians are labeled, can be sorted by "mean" or by "weight" (weight being the height of the gaussian). |
-| `volt(c, v)` | Select part of a sweep where the control voltage `c` matches the target voltage `v` |
-
+| Syntax                            | Description                                                                                                                                                                                                                                                                                                                                                                                                           |
+|-----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `switch()`                        | Segment a gapfree trace based on large, short, current spikes cause by manual voltage switching.                                                                                                                                                                                                                                                                                                                      |
+| `threshold(lo,hi)`                | Segment an input segment by consecutive stretches of current between `lo` and `hi`.                                                                                                                                                                                                                                                                                                                                   |
+| `levels(n, tol=0, sortby='mean')` | Detect sublevels by fitting a [gaussian mixture model](https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html). Use `n` to set the number of gaussians to fit, `tol` is a number between 0 and 1 and controls how much short spikes are tolerated. `sortby` controls how the gaussians are labeled, can be sorted by "mean" or by "weight" (weight being the height of the gaussian). |
+| `volt(abf, v)`                     | Select part of a sweep where the control voltage in `abf` matches the target voltage `v`                                                                                                                                                                                                                                                                                                                              |
+| `by_tag(abf, pattern)` | Segment a trace into smaller pieces based on matches with `pattern`. `pattern` can be any regex pattern.
+| `cusum(mu, sigma, omega, c, padding: int=0)` | Event detection using CUSUM method. `mu` is the target mean, `sigma` is the standard deviation around the mean, `omega` is the tunable critical level parameter, `c` is the ceiling for the CUSUM control value.
 ### Decorators
 [Decorators](https://peps.python.org/pep-0318/) are functions that wrap around other functions with a convenient syntax. I use them to _enhance_ the "default" behavior of the stages and they live in `porepipe.decorators`. The following decorators are predefined:
 
 | Name                                | Description                                                                                                                                                                                                                                                                                                                   |
 |------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `cutoff`                           | Add a filter to a stage that blocks yielding segments _smaller than_ the cutoff. `cutoff` adds the "cutoff" keyword argument to a stage.                                                                                                                                                                                      |
 | `partial`                          | Essentially functions as [functools.partial](https://docs.python.org/3/library/functools.html) but in a decorator form for convenience. Allows pre-defining some arguments when the decorated function is called. I use it to set keyword arguments and only leave _positional arguments_ to be filled when the stage is run. |
 
 
@@ -140,21 +149,6 @@ Pipeline(
 )
 ```
 
-The `cutoff` decorator is used on a many built-in stages to filter out segments that are too short. It can be added to a custom stage like so:
-
-```python
-from nanotrace.decorators import cutoff
-
-@cutoff
-def new_stage(t,y):
-    """An example pipeline stage that "yields" new segments"""
-    t_segments = f(t)
-    y_segments = f(y)
-    for new_t, new_y in zip(t_segments, y_segments):
-        # Using "yield" turns the function into a generator
-        yield new_t, new_y
-```
-
 ## Inspection and validation
 The main advantage of using a `Tree` datastructure is that every segment generated by the pipeline is connected to its parent segment. This means that along every step of the pipeline, the stage input and output can be plotted and inspected to ensure the output matches expectations. To aid in this there are a couple of convenience functions:
 
@@ -162,6 +156,7 @@ The main advantage of using a `Tree` datastructure is that every segment generat
 
 `Segment.inspect` is a convenience function that plots events (lowest level segments) on top of itself. This way you get an overview of the effect of all the stages downstream of the stage that `inspect` was called on.
 
+`Root.inspect` is a convenience function to call `inspect` on a named step and provides an interactive plot that allows scrolling through all segments of that level.
 ### Example:
 
 ```python
@@ -214,3 +209,32 @@ pipe(abf).features.plot('mean','ldt','scatter')
 ![features example output](figures/features.png)
 
 
+## Compound pipes
+Pipelines can be added together using the `|` operator (in unix terms also known as a pipe).
+
+### Example:
+```python
+from nanotrace import *
+
+abf = ABF("../test/test_blood.abf")
+fs = abf.sampleRate
+
+first = Pipeline(
+    volt(abf.sweepC, 20),
+    lowpass(cutoff_fq=10e3, fs=fs),
+    trim(left=0.01*fs),
+    as_ires(),
+)
+
+# here we could do some calculations based on the first part of the pipe
+# and use this for the second pipe definition
+
+second = Pipeline(
+    threshold(lo=0.0, hi=0.8, cutoff=1e-3*fs),
+    features=(mean, ldt),
+    n_segments=10,
+    n_jobs=4
+)
+
+pipe = first | second
+```
