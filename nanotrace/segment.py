@@ -302,15 +302,19 @@ class Segment(Node):
             x = self.t
         y = self.y
 
-        plt.plot(x, y, fmt, data=self,**kwargs)
+        plt.plot(x, y, fmt, data=self, **kwargs)
 
     def inspect(self, *args, **kwargs):
         """Plot events on top of self"""
         self.plot(*args, **kwargs)
-        if not 'color' in kwargs:
-            # kwargs['color'] = 'C1'
-            pass
+        colors = []
         for event in self.events:
+            # if event has label, use it for coloring
+            if event.l is not None:
+                label = event.l
+                if not label in colors:
+                    colors.append(label)
+                kwargs['color'] = f"C{colors.index(label)}"
             event.plot(*args, **kwargs)
 
     def labels(self, *args, **kwargs):
