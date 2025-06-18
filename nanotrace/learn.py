@@ -1,6 +1,7 @@
 """
 Some convenience functions to make using OneClass models (outlier detection) easier to use.
 """
+from __future__ import annotations
 __copyright__ = """
 Copyright 2025 Matthijs Tadema
 
