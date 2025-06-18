@@ -368,7 +368,8 @@ def trim(t: np.ndarray, y: np.ndarray, *, left: int=0, right: int=1) -> Generato
 
 
 @partial
-def levels(t: np.ndarray, y: np.ndarray, *, n: int, tol: float=0, sortby: str='mean') -> Generator[tuple[Sequence, Sequence, Sequence] | None]:
+def levels(t: np.ndarray, y: np.ndarray, *, n: int, tol: float=0,
+           sortby: str='mean') -> Generator[tuple[Sequence, Sequence, Sequence] | None]:
     """
     Detect levels by fitting to a gaussian mixture model with n components.
     tol is a tolerance parameter between 0-1 that smoothens the prediction probabilities
@@ -427,7 +428,7 @@ def volt(t: np.ndarray, y: np.ndarray, *, abf: ABF, v: float) -> Generator[tuple
 def by_tag(t: np.ndarray, y: np.ndarray, *, abf: ABF,
            pattern: str) -> Generator[tuple[np.ndarray, np.ndarray] | None]:
     """
-    Segment a gapfree nanotrace by tags matching a pattern.
+    Segment a gapfree trace by tags matching a pattern.
     NOTE: must be used as the first stage otherwise the tag times don't make sense.
 
     :param t: time
