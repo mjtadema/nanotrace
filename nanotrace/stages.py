@@ -197,6 +197,8 @@ def smooth_pred(y: np.ndarray, fit: Predictor, tol: float) -> np.ndarray:
         tol = 1
     proba = fit.predict_proba(y.reshape(-1, 1))
     klen = int((len(y) / 10) * tol)
+    if not klen > 0:
+        raise StageError("Segment too small for smoothing")
     kernel = np.full((klen, proba.shape[1]), 1 / klen)
     pred = np.argmax(fftconvolve(proba, kernel, axes=0, mode='same'), axis=1)
     return pred
