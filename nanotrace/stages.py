@@ -1,4 +1,9 @@
 from __future__ import annotations
+
+from typing import Generator, Sequence
+
+from .learn import Predictor
+
 """
 Pipeline stages
 ---------------
@@ -93,7 +98,6 @@ from functools import wraps
 
 import numpy as np
 from pyabf import ABF
-
 from scipy import signal
 from scipy.signal import find_peaks, fftconvolve
 from sklearn.mixture import GaussianMixture
@@ -104,32 +108,51 @@ from .decorators import partial
 
 
 # Utilities
-def reject_outliers(data, m = 3.5):
+def reject_outliers(data: np.ndarray, m: float=3.5) -> bool:
+    """
+    Reject outliers based on median absolute deviation (MAD).
+    Inspired by stack overflow (https://stackoverflow.com/questions/11686720/is-there-a-numpy-builtin-to-reject-outliers-from-a-list)
+
+    :param data: input data
+    :param m: modified z-score
+    :return: boolean array where outliers are False
+    """
     d = np.abs(data - np.median(data))
     mdev = np.median(d)
     s = d/mdev if mdev else np.zeros(len(d))
     return s<m
 
 
-def baseline(y, min_samples=1000, min_amplitude=50, max_amplitude=150) -> tuple[float, float]:
+def baseline(y: np.ndarray, min_samples: int=1000,
+             min_amplitude: int=50, max_amplitude: int=150) -> tuple[float, float] | None:
     """
     Calculate baseline between a specified range.
     Outliers are rejected using MAD criteria.
     median and standard deviation of baseline are returned
+
+    :param min_samples: Minimum number of samples to consider
+    :param min_amplitude: Minimum amplitude to consider
+    :param max_amplitude: Maximum amplitude to consider
+    :return: Baseline and standard deviation
     """
     thres = (min_amplitude < y) & (y < max_amplitude)
     inliers = reject_outliers(y[thres], m=2)
     clean = y[thres][inliers]
     if len(clean) >= min_samples:
-        return np.median(clean), np.std(clean)
+        return float(np.median(clean)), float(np.std(clean))
 
 
-def baseline_from_sweeps(abf, nbins=10, maxfail=0.5, **kwargs):
+def baseline_from_sweeps(abf: ABF, nbins: int=10, maxfail: int=0.5, **kwargs) -> tuple[float, float] | None:
     """
     Try to calculate the baseline from each sweep,
     then bin them and take the mean of the highest bin.
     This avoids baseline miscalculation when there is little to no
     baseline present.
+
+    :param abf: ABF object
+    :param nbins: Number of bins to use
+    :param maxfail: Maximum number of failures (fraction)
+    :return: Baseline and standard deviation
     """
     baselines = []
     fails = 0
@@ -150,20 +173,26 @@ def baseline_from_sweeps(abf, nbins=10, maxfail=0.5, **kwargs):
 
     digi = np.digitize(baselines[:, 0], bins=bins)
     highest = baselines[digi == max(digi)]
-    return np.mean(highest, axis=0)
+    return np.mean(highest, axis=0).astype(float)
 
-def smooth_pred(y, fit_, tol):
+
+def smooth_pred(y: np.ndarray, fit: Predictor, tol: float) -> np.ndarray:
     """
     Smoothen a gaussian mixture prediction
+
+    :param y: input data
+    :param fit: predictor to smoothen
+    :param tol: tolerance parameter determines sliding window size
+    :return: smoothed data
     """
     # tol between 0 and 1?
 
     if tol <= 0:
         # Special case, do the regual prediction
-        return fit_.predict(y.reshape(-1, 1))
+        return fit.predict(y.reshape(-1, 1))
     elif tol > 1:
         tol = 1
-    proba = fit_.predict_proba(y.reshape(-1, 1))
+    proba = fit.predict_proba(y.reshape(-1, 1))
     klen = int((len(y) / 10) * tol)
     kernel = np.full((klen, proba.shape[1]), 1 / klen)
     pred = np.argmax(fftconvolve(proba, kernel, axes=0, mode='same'), axis=1)
@@ -171,13 +200,13 @@ def smooth_pred(y, fit_, tol):
 
 
 @partial
-def size(t,y,*,min=0,max=np.inf):
+def size(t: np.ndarray, y: np.ndarray, *, min: int=0, max: int=np.inf) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """Specify a minimum and maximum size for a segment"""
     if min < len(t) < max:
         yield t,y
 
 
-@njit  # jit compiled for speed, much easier to deal with than cython
+@njit  # jit compiled for speed
 def lower_cusum(y, *, mu: float = None, sigma: float = None,
                 omega: float = 0, c: float = 9999) -> np.ndarray:
     """
@@ -204,12 +233,21 @@ def lower_cusum(y, *, mu: float = None, sigma: float = None,
 
 
 @partial
-def cusum(t,y,*,mu,sigma,omega,c):
+def cusum(t: np.ndarray, y: np.ndarray, *, mu: float, sigma: float,
+          omega: float, c: float) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Forward cusum to find start,
     reverse cusum to find end.
     medium events with s.d. ~5% of baseline: omega ~200, c ~1000
     short events with s.d. ~5% baseline: omega 60, c 200
+
+    :param t: time
+    :param y: data
+    :param mu: target mean
+    :param sigma: target S.D.
+    :param omega: tunable critical level parameter
+    :param c: optional ceiling to avoid runaway values
+    :yield: event segments
     """
     S = lower_cusum(y, mu=mu, sigma=sigma, omega=omega, c=c)
     # Reverse cusum to find ends
@@ -221,7 +259,7 @@ def cusum(t,y,*,mu,sigma,omega,c):
 
 
 @partial
-def switch(t, y):
+def switch(t: np.ndarray, y: np.ndarray) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Segment a raw nanotrace based on manual voltage switch spikes
     """
@@ -238,15 +276,16 @@ def switch(t, y):
 
 
 @partial
-def lowpass(t: np.ndarray, y: np.ndarray, *, cutoff: int, abf: ABF, order: int=10) -> Generator[tuple[np.ndarray, np.ndarray]]:
+def lowpass(t: np.ndarray, y: np.ndarray, *, cutoff: int,
+            abf: ABF, order: int=10) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Wrap a lowpass butterworth filter
-    :param t:
-    :param y:
-    :param cutoff_fq:
-    :param fs:
-    :param order:
-    :return:
+    :param t: time
+    :param y: data
+    :param cutoff: cutoff frequency (Hz)
+    :param abf: ABF object
+    :param order: filter order (default: 10)
+    :yield: filtered data
     """
     sos = signal.butter(order, cutoff, 'lowpass', fs=abf.sampleRate, output='sos')
     filt = signal.sosfilt(sos, y)
@@ -255,10 +294,14 @@ def lowpass(t: np.ndarray, y: np.ndarray, *, cutoff: int, abf: ABF, order: int=1
 
 
 @partial
-def as_ires(t, y, bl='auto', min_amplitude: int=0, max_amplitude: int=200, min_samples: int=1000):
-    """Calculate Ires using an automatic baseline calculation"""
+def as_ires(t: np.ndarray, y: np.ndarray, bl: float | str='auto', **kwargs) -> Generator[tuple[np.ndarray, np.ndarray] | None]:
+    """
+    Calculate Ires, optionally using an automatic baseline calculation
+
+    :param t: time
+    """
     if bl == 'auto':
-        bl, _ = baseline(y, min_samples=min_samples, min_amplitude=min_amplitude, max_amplitude=max_amplitude)
+        bl, _ = baseline(y, **kwargs)
     try:
         yield t, y / bl
     except IndexError:
@@ -271,9 +314,17 @@ def as_iex(t,y, **kwargs):
 
 
 @partial
-def threshold(t, y, *, lo: float=0, hi: float, tol: float=0):
+def threshold(t: np.ndarray, y: np.ndarray, *, lo: float=0,
+              hi: float, tol: float=0) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Segment into consecutive pieces between lo and hi
+
+    :param t: time
+    :param y: data
+    :param lo: lower bound
+    :param hi: upper bound
+    :param tol: tolerance factor, defaults to 0.
+        Value between 0 and 1
     """
     if tol > 0:
         klen = int((len(y) / 10) * tol)
@@ -290,7 +341,7 @@ def threshold(t, y, *, lo: float=0, hi: float, tol: float=0):
 
 
 @partial
-def trim(t, y, *, left: int=0, right: int=1):
+def trim(t: np.ndarray, y: np.ndarray, *, left: int=0, right: int=1) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Trim off part of the segment
     :param left: samples to trim off on the left, can use seconds if multiplied by fs
@@ -302,7 +353,7 @@ def trim(t, y, *, left: int=0, right: int=1):
 
 
 @partial
-def levels(t, y, *, n: int, tol: float=0, sortby: str='mean'):
+def levels(t: np.ndarray, y: np.ndarray, *, n: int, tol: float=0, sortby: str='mean') -> Generator[tuple[Sequence, Sequence, Sequence] | None]:
     """
     Detect levels by fitting to a gaussian mixture model with n components.
     tol is a tolerance parameter between 0-1 that smoothens the prediction probabilities
@@ -335,11 +386,10 @@ def levels(t, y, *, n: int, tol: float=0, sortby: str='mean'):
     padded = np.pad(pred, pad_width=(0, 2), mode='edge')
     for s, e, l in zip(bounds[:-1], bounds[1:], padded[bounds + 1]):
         # l becomes a feature with function name as column name
-        yield t[s:e], y[
-                      s:e], l  # This is the way to smuggle out extra information without having access to the segment yet
+        yield t[s:e], y[s:e], l
 
 @partial
-def volt(t,y,*,abf: ABF,v: float):
+def volt(t: np.ndarray, y: np.ndarray, *, abf: ABF, v: float) -> Generator[tuple[np.ndarray, np.ndarray] | None]:
     """
     Given the control voltage array and a target voltage,
     cache start and end indices in a closure that slice the sweep at the target voltage.
@@ -357,7 +407,8 @@ def volt(t,y,*,abf: ABF,v: float):
 
 
 @partial
-def by_tag(t: np.ndarray, y: np.ndarray, *, abf: ABF, pattern: str):
+def by_tag(t: np.ndarray, y: np.ndarray, *, abf: ABF,
+           pattern: str) -> Generator[tuple[np.ndarray, np.ndarray] | None]:
     """
     Segment a gapfree nanotrace by tags matching a pattern.
     NOTE: must be used as the first stage otherwise the tag times don't make sense.
