@@ -147,11 +147,11 @@ class Root(Node):
         else:
             return events[self.post(self.features)]
 
-    def inspect(self, stage: str):
+    def inspect(self, stage: str, **kwargs):
         parents = self.by_name[stage]
         @interact(i=(0, len(parents)-1, 1))
         def f(i=0):
-            parents[i].inspect()
+            parents[i].inspect(**kwargs)
 
     @property
     def features(self) -> pd.DataFrame:
