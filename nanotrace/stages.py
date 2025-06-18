@@ -103,7 +103,7 @@ from scipy.signal import find_peaks, fftconvolve
 from sklearn.mixture import GaussianMixture
 from numba import njit
 
-from .exception import StageError
+from .exception import StageError, BadBaseline
 from .decorators import partial
 
 
@@ -140,6 +140,8 @@ def baseline(y: np.ndarray, min_samples: int=1000,
     clean = y[thres][inliers]
     if len(clean) >= min_samples:
         return float(np.median(clean)), float(np.std(clean))
+    else:
+        raise BadBaseline(f"#samples {len(clean)} < min samples {min_samples}")
 
 
 def baseline_from_sweeps(abf: ABF, nbins: int=10, maxfail: int=0.5, **kwargs) -> tuple[float, float] | None:
@@ -300,12 +302,14 @@ def as_ires(t: np.ndarray, y: np.ndarray, bl: float | str='auto', **kwargs) -> G
 
     :param t: time
     """
-    if bl == 'auto':
-        bl, _ = baseline(y, **kwargs)
-    try:
-        yield t, y / bl
-    except IndexError:
-        pass
+    if isinstance(bl, str):
+        assert bl == 'auto', "Only 'auto' is accepted as string"
+        try:
+            bl, _ = baseline(y, **kwargs)
+        except BadBaseline as e:
+            raise StageError("Could not automatically calculate baseline") from e
+    yield t, y / bl
+
 
 @partial
 @wraps(as_ires)

@@ -28,7 +28,7 @@ from pyabf import abfWriter
 from tqdm.auto import tqdm
 from ipywidgets import interact
 
-from .exception import RootError
+from .exception import RootError, StageError
 
 logger = logging.getLogger(__name__)
 
@@ -267,7 +267,7 @@ class Segment(Node):
                     seg.parent = self
                     if i == self.n_segments:
                         break
-            except:
+            except StageError:
                 logger.warning("Stage %s failed"%self.stage.__name__)
 
     @Node.children.getter

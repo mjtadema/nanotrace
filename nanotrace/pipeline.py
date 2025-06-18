@@ -17,7 +17,7 @@ limitations under the License.
 import logging
 from pathlib import Path
 
-from .exception import PorePipeException
+from .exception import NanotraceException
 from .segment import Root
 from .abf import ABFLike, as_abf, AbfRoot, ABFLikeTypes
 
@@ -85,7 +85,7 @@ class Pipeline:
             key = abfpath.absolute()
             root = AbfRoot
         else:
-            raise PorePipeException(f"{type(source)} is not a valid source type")
+            raise NanotraceException(f"{type(source)} is not a valid source type")
 
         if not key in self._cache:
             logger.debug("Creating tree from root: %s", key)

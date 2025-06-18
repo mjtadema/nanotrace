@@ -18,13 +18,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-class PorePipeException(Exception):
+class NanotraceException(Exception):
     pass
 
 
-class StageError(PorePipeException):
+class StageError(NanotraceException):
     pass
 
 
-class RootError(PorePipeException):
+class RootError(NanotraceException):
+    pass
+
+
+class BadBaseline(NanotraceException):
     pass
