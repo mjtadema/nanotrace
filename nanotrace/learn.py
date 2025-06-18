@@ -18,6 +18,7 @@ limitations under the License.
 """
 
 import logging
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -36,8 +37,9 @@ Estimator = type("Estimator", (), {"fit": None})
 Predictor = type("Predictor", (), {"decision_function": None})
 
 def gridSearchCVOneClass(estimator: Estimator,
-                      Xpos: pd.DataFrame, *, param_grid,
-                      cv=5, scoring='recall', refit=True, **kwargs) -> Predictor:
+                        Xpos: pd.DataFrame, *, param_grid,
+                        cv: int | object=5, scoring: str | Callable='recall',
+                        refit=True, **kwargs) -> Predictor:
     """
     Search a grid of parameter combinations for a given estimator.
     Requires the estimator to be a OneClassSVM or at least a Pipeline with
@@ -45,7 +47,10 @@ def gridSearchCVOneClass(estimator: Estimator,
 
     :param estimator: a OneClassSVM or a Pipeline
     :param Xpos: features of the _positive_ class
+    :param param_grid: parameter grid
     :param cv: optional fold for crossvalidation
+    :param refit: whether to refit or not
+    :param scoring: scoring function to use
     :param kwargs: Additional kwargs get passed to GridSearchCV
     :return: optimized predictor
     """
@@ -58,7 +63,7 @@ def gridSearchCVOneClass(estimator: Estimator,
 
 class TunedOneClass:
     """
-
+    Tune the decision threshold for a one class predictor
     """
     def __init__(self, predictor: Predictor, scoring=accuracy_score) -> None:
         """

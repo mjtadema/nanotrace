@@ -28,7 +28,7 @@ class Pipeline:
     """
     The Pipeline class is the main class of this module.
     Its job is to define the pipeline through _stages_, functions that each modify timeseries data
-    as steps in a in a pipeline.
+    as steps in a pipeline.
 
     Example:
         ```

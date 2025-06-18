@@ -173,6 +173,7 @@ def gNDF(x: np.ndarray, A: float, x0: float, sigma: float, B: float, C: float) -
     :param A: baseline
     :param x0: event location
     :param sigma: sigma of the distribution
+    :param B: shape parameter
     :param C: event block
     :return: NDF over x
     """
@@ -185,12 +186,6 @@ def peptide_fit(t: np.ndarray, y: np.ndarray) -> tuple[Any, Any, floating]:
     """
     Fit current data from y to the gNDF to characterize peptide blockage events
     """
-    # expand the event to include some baseline for fitting
-    s,e = index_base(y)
-    l = e-s
-    # Expand by twice the event length
-    y = y.base[s-2*l:e+2*l].astype(np.float64)
-    t = t.base[s-2*l:e+2*l].astype(np.float64)
     if len(y) > 5000:
         # Resample if y is too large
         y,t = resample(y, num=5000, t=t)

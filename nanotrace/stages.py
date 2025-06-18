@@ -130,6 +130,7 @@ def baseline(y: np.ndarray, min_samples: int=1000,
     Outliers are rejected using MAD criteria.
     median and standard deviation of baseline are returned
 
+    :param y: data
     :param min_samples: Minimum number of samples to consider
     :param min_amplitude: Minimum amplitude to consider
     :param max_amplitude: Maximum amplitude to consider
@@ -235,7 +236,7 @@ def lower_cusum(y, *, mu: float = None, sigma: float = None,
 
 
 @partial
-def cusum(t: np.ndarray, y: np.ndarray, *, mu: float, sigma: float,
+def cusum(t: np.ndarray, y: np.ndarray, *, mu: float, sigma: float, padding: int=0,
           omega: float, c: float) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Forward cusum to find start,
@@ -247,6 +248,7 @@ def cusum(t: np.ndarray, y: np.ndarray, *, mu: float, sigma: float,
     :param y: data
     :param mu: target mean
     :param sigma: target S.D.
+    :param padding: pad indices this much
     :param omega: tunable critical level parameter
     :param c: optional ceiling to avoid runaway values
     :yield: event segments
@@ -257,6 +259,8 @@ def cusum(t: np.ndarray, y: np.ndarray, *, mu: float, sigma: float,
     start = np.arange(len(y))[np.diff(S > c/2, append=0)==1]
     end = np.arange(len(y))[np.diff(Sr > c/2, append=0)==-1]
     for s,e in zip(start,end):
+        s = max(0, s-padding)
+        e = min(len(y)-1, e+padding)
         yield t[s:e], y[s:e]
 
 
@@ -301,6 +305,8 @@ def as_ires(t: np.ndarray, y: np.ndarray, bl: float | str='auto', **kwargs) -> G
     Calculate Ires, optionally using an automatic baseline calculation
 
     :param t: time
+    :param y: data
+    :param bl: pre calculated baseline or "auto"
     """
     if isinstance(bl, str):
         assert bl == 'auto', "Only 'auto' is accepted as string"
@@ -348,6 +354,9 @@ def threshold(t: np.ndarray, y: np.ndarray, *, lo: float=0,
 def trim(t: np.ndarray, y: np.ndarray, *, left: int=0, right: int=1) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Trim off part of the segment
+
+    :param t: time
+    :param y: data
     :param left: samples to trim off on the left, can use seconds if multiplied by fs
     :param right: samples to trim off on the right, can use seconds if multiplied by fs
     """
@@ -398,7 +407,9 @@ def volt(t: np.ndarray, y: np.ndarray, *, abf: ABF, v: float) -> Generator[tuple
     Given the control voltage array and a target voltage,
     cache start and end indices in a closure that slice the sweep at the target voltage.
 
-    :param c: (array) control voltage
+    :param t: time
+    :param y: data
+    :param abf: ABF object
     :param v: (float) target voltage
     :return: function that slices the sweep
     """

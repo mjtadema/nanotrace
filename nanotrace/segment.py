@@ -16,8 +16,6 @@ limitations under the License.
 """
 
 import logging
-from functools import wraps
-from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -84,7 +82,7 @@ class Node(NodeMixin):
         return '\n'.join(out)
 
     @property
-    def by_index(self) -> list[Any]:
+    def by_index(self) -> list[Segment]:
         """
         :return: a list of nodes grouped by level
         """
@@ -190,7 +188,8 @@ class Root(Node):
 
 
             # if events have a label (event.l), add it to features
-            if events[0].l is not None:
+            event: Segment = events[0] # This is an array of Segments
+            if event.l is not None:
                 columns.append("label")
                 labels = []
                 for event in events:
