@@ -6,6 +6,6 @@ authors:
   orcid: "https://orcid.org/0000-0003-0376-8528"
 title: "nanotrace"
 version: 1.0.0
-doi: not yet requested
+doi: https://doi.org/10.5281/zenodo.15731070
 date-released: 2025-06-24
 url: "https://github.com/mjtadema/nanotrace"
