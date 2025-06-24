@@ -31,11 +31,6 @@ This guide covers the following topics:
 ## Installation
 Install the latest release from PyPi: `pip install nanotrace`
 
-## Updating
-Update using the latest development version: `pip install --upgrade --force-reinstall --no-deps git+https://github.com/mjtadema/nanotrace.git`
-
-Update using the latest stable version **(Recommended)**: `pip install --upgrade --force-reinstall --no-deps git+https://github.com/mjtadema/nanotrace.git`
-
 ## Usage
 The pipeline is defined and used through the [Pipeline object](#pipeline-design). As a convention, class names use what is known as "CamelCase", while other variables use_this_style_of_naming. Available pipeline stages can be found [here](#available-stages).
 
