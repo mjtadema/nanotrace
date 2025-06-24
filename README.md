@@ -29,20 +29,7 @@ This guide covers the following topics:
    1. [Example](#example-2)
 
 ## Installation
-### <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/brands/windows.svg" height="20" style="vertical-align: middle;"> <span style="vertical-align: middle;">Windows</span>
-2. [Install GIT](https://git-scm.com/downloads/win)
-3. [Install Anaconda or miniconda](https://www.anaconda.com/docs/getting-started/anaconda/install#windows-installation)
-4. Create a virtual environment that you want to use for 
-5. Open the Anaconda cmd prompt **from the correct environment**
-
-### <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/brands/linux.svg" height="20" style="vertical-align: middle;"> <span style="vertical-align: middle;">Linux</span>
-2. Install git from whatever software repository you use (i.e. `sudo apt install git` for ubuntu/debian)
-3. (optional) install conda if you prefer
-4. Create a virtual environment where you want to use the pipeline: `$ pip -m venv venv`
-5. Activate the virtual environment: `$ . venv/bin/activate`
-
-### All platforms
-7. Install the module from the github repo: `pip install git+https://github.com/mjtadema/nanotrace.git`
+Install the latest release from PyPi: `pip install nanotrace`
 
 ## Updating
 Update using the latest development version: `pip install --upgrade --force-reinstall --no-deps git+https://github.com/mjtadema/nanotrace.git`
