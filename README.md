@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/931659102.svg)](https://doi.org/10.5281/zenodo.15731069) [![PyPI version](https://badge.fury.io/py/nanotrace.svg)](https://badge.fury.io/py/nanotrace)
+
 ![nanotrace logo](figures/trace_logo.png)
 
 # NanoTRACE — Nanopore Toolkit for Reproducible Analysis of Conductive Events
