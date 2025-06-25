@@ -111,7 +111,7 @@ class Root(Node):
         :param post: an optional list of postprocessors to apply to the events
         """
         super().__init__(*args, **kwargs)
-        self.fs = None
+        self._fs = None
         self._features = pd.DataFrame()
 
         self.pipe = pipeline
@@ -120,6 +120,10 @@ class Root(Node):
         self.extractors = features
         self.post = post
         self.n_segments = n_segments
+
+    @property
+    def fs(self) -> int:
+        return self._fs
 
     @property
     def n_jobs(self) -> int:
