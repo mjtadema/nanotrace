@@ -1,6 +1,6 @@
 ![nanotrace logo](figures/trace_logo.png)
 
-[![DOI](https://zenodo.org/badge/931659102.svg)](https://doi.org/10.5281/zenodo.15731069) [![PyPI version](https://badge.fury.io/py/nanotrace.svg)](https://badge.fury.io/py/nanotrace)
+[![DOI](https://zenodo.org/badge/931659102.svg)](https://doi.org/10.5281/zenodo.15731069) [![PyPI version](https://badge.fury.io/py/nanotrace.svg)](https://badge.fury.io/py/nanotrace) [![Test Python package](https://github.com/mjtadema/nanotrace/actions/workflows/test_pipeline.yml/badge.svg)](https://github.com/mjtadema/nanotrace/actions/workflows/test_pipeline.yml)
 
 # NanoTRACE — Nanopore Toolkit for Reproducible Analysis of Conductive Events
 `nanotrace` is a python library for automated nanopore electrophysiology (1d timeseries) manipulation and feature extraction.
