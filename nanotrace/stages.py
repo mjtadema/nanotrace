@@ -164,7 +164,7 @@ def baseline_from_sweeps(abf: ABF, nbins: int=10, maxfail: int=0.5, **kwargs) ->
         try:
             bl, sd = baseline(abf.sweepY, **kwargs)
             baselines.append((bl, sd))
-        except (TypeError, IndexError) as e:
+        except (TypeError, IndexError, BadBaseline) as e:
             fails += 1
             if fails > abf.sweepCount * maxfail:
                 raise Exception("too many baseline failures") from e

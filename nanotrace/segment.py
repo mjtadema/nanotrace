@@ -27,7 +27,7 @@ from pyabf import abfWriter
 from tqdm.auto import tqdm
 from ipywidgets import interact
 
-from .pipeline import Pipeline
+from . import pipeline
 from .exception import RootError, StageError
 
 logger = logging.getLogger(__name__)
@@ -97,7 +97,7 @@ class Root(Node):
     As the main interface to the tree, Root implements some convenience functions and properties.
     Root takes care of calculating features over all events.
     """
-    def __init__(self, *args, pipeline: Pipeline, n_segments: int=-1,
+    def __init__(self, *args, pipeline: pipeline.Pipeline, n_segments: int=-1,
                  features: Sequence | None=None, post: Callable | None=None, **kwargs) -> None:
         """
         Root constructor only sets up generic pipeline stuff.
@@ -111,7 +111,7 @@ class Root(Node):
         :param post: an optional list of postprocessors to apply to the events
         """
         super().__init__(*args, **kwargs)
-        self.fs = None
+        self._fs = None
         self._features = pd.DataFrame()
 
         self.pipe = pipeline
@@ -120,6 +120,10 @@ class Root(Node):
         self.extractors = features
         self.post = post
         self.n_segments = n_segments
+
+    @property
+    def fs(self) -> int:
+        return self._fs
 
     @property
     def n_jobs(self) -> int:
@@ -139,7 +143,7 @@ class Root(Node):
         }
 
     @property
-    def events(self) -> np.ndarray:
+    def events(self) -> np.ndarray[Segment]:
         """
         :return: segments from the lowest level as array
         """
