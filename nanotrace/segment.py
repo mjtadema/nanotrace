@@ -143,7 +143,7 @@ class Root(Node):
         }
 
     @property
-    def events(self) -> np.ndarray:
+    def events(self) -> np.ndarray[Segment]:
         """
         :return: segments from the lowest level as array
         """
