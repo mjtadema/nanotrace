@@ -1,4 +1,4 @@
-![nanotrace logo](figures/trace_logo.png)
+![nanotrace logo](https://github.com/mjtadema/nanotrace/blob/master/figures/trace_logo.png?raw=true)
 
 [![DOI](https://zenodo.org/badge/931659102.svg)](https://doi.org/10.5281/zenodo.15731069) [![PyPI version](https://badge.fury.io/py/nanotrace.svg)](https://badge.fury.io/py/nanotrace) [![Test Python package](https://github.com/mjtadema/nanotrace/actions/workflows/test_pipeline.yml/badge.svg)](https://github.com/mjtadema/nanotrace/actions/workflows/test_pipeline.yml)
 
@@ -11,7 +11,7 @@ Features can be defined as a set of callables that compute a feature metric from
 For parallelization, [joblib](https://github.com/joblib/joblib) is used to support a variety of multiprocessing/threading backends for feature extraction.
 
 ## Graphical abstract
-![graphical abstract](figures/abstract.png)
+![graphical abstract](https://github.com/mjtadema/nanotrace/blob/master/figures/abstract.png)
 
 ## Table of contents
 This guide covers the following topics:
@@ -164,7 +164,7 @@ pipe = Pipeline(
 )
 pipe(abf).by_name['as_ires'][0].inspect()
 ```
-![inspect example output](figures/inspect.png)
+![inspect example output](https://github.com/mjtadema/nanotrace/blob/master/figures/inspect.png)
 
 ## Feature extraction
 After segmenting a trace and detecting events, features can be extracted. This generally means that a single event gets reduced to several characteristic quantities that we call _features_, such as the mean current value (using `mean`) or the dwell-time (using `dt`), among other features. Below is a working `Pipeline` definition with feature extraction to extract the mean current and the dwelltime from the events resulting from the `Pipeline`.
@@ -193,7 +193,7 @@ pipe = Pipeline(
 )
 pipe(abf).features.plot('mean','ldt','scatter')
 ```
-![features example output](figures/features.png)
+![features example output](https://github.com/mjtadema/nanotrace/blob/master/figures/features.png)
 
 
 ## Compound pipes
