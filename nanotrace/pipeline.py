@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Sequence, Callable
 
 from .exception import NanotraceException
-from .segment import Root
+from . import segment
 from .abf import ABFLike, as_abf, AbfRoot, ABFLikeTypes
 
 logger = logging.getLogger(__name__)
@@ -80,7 +80,7 @@ class Pipeline:
         self.kwargs.update(other.kwargs)
         return self
 
-    def __call__(self, source: ABFLike) -> Root:
+    def __call__(self, source: ABFLike) -> segment.Root:
         """
         When called with an abf file, construct a segment tree from its data and cache it.
         kwargs of the pipeline constructor are passed to the root of the tree

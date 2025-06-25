@@ -27,7 +27,7 @@ from pyabf import abfWriter
 from tqdm.auto import tqdm
 from ipywidgets import interact
 
-from .pipeline import Pipeline
+from . import pipeline
 from .exception import RootError, StageError
 
 logger = logging.getLogger(__name__)
@@ -97,7 +97,7 @@ class Root(Node):
     As the main interface to the tree, Root implements some convenience functions and properties.
     Root takes care of calculating features over all events.
     """
-    def __init__(self, *args, pipeline: Pipeline, n_segments: int=-1,
+    def __init__(self, *args, pipeline: pipeline.Pipeline, n_segments: int=-1,
                  features: Sequence | None=None, post: Callable | None=None, **kwargs) -> None:
         """
         Root constructor only sets up generic pipeline stuff.
