@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from nanotrace import Pipeline, ABF
 from nanotrace.stages import volt, baseline_from_sweeps, as_ires, lowpass, cusum, size, trim
-from nanotrace.features import global_features, sequence_features
+from nanotrace.features import global_features
 
 def test_pipeline():
     """
