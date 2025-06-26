@@ -16,6 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import copy
 import logging
 from pathlib import Path
 from typing import Sequence, Callable
@@ -75,12 +76,13 @@ class Pipeline:
         overwrite other settings such as n_jobs
         and other kwargs from the second pipe.
         """
-        self._cache = {} # reset cache
-        self.stages.extend(other.stages)
-        self.features.extend(other.features)
-        self.n_jobs = other.n_jobs
-        self.kwargs.update(other.kwargs)
-        return self
+        new = copy.deepcopy(self)
+        new._cache = {} # reset cache
+        new.stages.extend(other.stages)
+        new.features.extend(other.features)
+        new.n_jobs = other.n_jobs
+        new.kwargs.update(other.kwargs)
+        return new
 
     def __call__(self, source: ABFLike) -> segment.Root:
         """
