@@ -57,7 +57,7 @@ class Pipeline:
         self._cache = {}
         logger.debug("Constructing pipeline with %d steps: %s", len(stages), ",".join([f.__name__ for f in stages]))
         self.stages = list(stages)
-        self.features = features if features is not None else []
+        self.features = [*features] if features is not None else []
         self.n_jobs = n_jobs
         self.kwargs = kwargs
 
