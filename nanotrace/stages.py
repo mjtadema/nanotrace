@@ -124,7 +124,7 @@ def reject_outliers(data: np.ndarray, m: float=3.5) -> bool:
 
 
 def baseline(y: np.ndarray, min_samples: int=1000,
-             lo: int=50, hi: int=150) -> tuple[float, float] | None:
+             lo: int=50, hi: int=150) -> tuple[np.floating, np.floating] | None:
     """
     Calculate baseline between a specified range.
     Outliers are rejected using MAD criteria.
@@ -140,7 +140,7 @@ def baseline(y: np.ndarray, min_samples: int=1000,
     inliers = reject_outliers(y[thres], m=2)
     clean = y[thres][inliers]
     if len(clean) >= min_samples:
-        return float(np.median(clean)), float(np.std(clean))
+        return np.median(clean), np.std(clean)
     else:
         raise BadBaseline(f"#samples {len(clean)} < min samples {min_samples}")
 
