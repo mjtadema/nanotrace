@@ -11,7 +11,7 @@ Features can be defined as a set of callables that compute a feature metric from
 For parallelization, [joblib](https://github.com/joblib/joblib) is used to support a variety of multiprocessing/threading backends for feature extraction.
 
 ## Graphical abstract
-![graphical abstract](https://github.com/mjtadema/nanotrace/blob/master/figures/abstract.png)
+![graphical abstract](https://github.com/mjtadema/nanotrace/blob/master/figures/abstract.png?raw=true)
 
 ## Table of contents
 This guide covers the following topics:
@@ -164,7 +164,7 @@ pipe = Pipeline(
 )
 pipe(abf).by_name['as_ires'][0].inspect()
 ```
-![inspect example output](https://github.com/mjtadema/nanotrace/blob/master/figures/inspect.png)
+![inspect example output](https://github.com/mjtadema/nanotrace/blob/master/figures/inspect.png?raw=true)
 
 ## Feature extraction
 After segmenting a trace and detecting events, features can be extracted. This generally means that a single event gets reduced to several characteristic quantities that we call _features_, such as the mean current value (using `mean`) or the dwell-time (using `dt`), among other features. Below is a working `Pipeline` definition with feature extraction to extract the mean current and the dwelltime from the events resulting from the `Pipeline`.
@@ -193,7 +193,7 @@ pipe = Pipeline(
 )
 pipe(abf).features.plot('mean','ldt','scatter')
 ```
-![features example output](https://github.com/mjtadema/nanotrace/blob/master/figures/features.png)
+![features example output](https://github.com/mjtadema/nanotrace/blob/master/figures/features.png?raw=true)
 
 
 ## Compound pipes
