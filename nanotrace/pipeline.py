@@ -46,7 +46,7 @@ class Pipeline:
     """
 
     def __init__(self, *stages: Sequence[Callable], n_jobs: int=1,
-                 features: tuple | None=None, **kwargs) -> None:
+                 features: Sequence[Callable] | None=None, **kwargs) -> None:
         """
         A pipeline is constructed as a linear list of pipeline "stages".
 
