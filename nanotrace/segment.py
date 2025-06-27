@@ -322,14 +322,11 @@ class Segment(Node):
     def inspect(self, *args, **kwargs):
         """Plot events on top of self"""
         self.plot(*args, **kwargs)
-        colors = []
         for event in self.events:
             # if event has label, use it for coloring
             if event.l is not None:
                 label = event.l
-                if not label in colors:
-                    colors.append(label)
-                kwargs['color'] = f"C{colors.index(label)}"
+                kwargs['color'] = f"C{label}"
             event.plot(*args, **kwargs)
 
     def write_abf(self, filename: str, *, fs=None) -> None:

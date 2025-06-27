@@ -124,7 +124,7 @@ def reject_outliers(data: np.ndarray, m: float=3.5) -> bool:
 
 
 def baseline(y: np.ndarray, min_samples: int=1000,
-             lo: int=50, hi: int=150) -> tuple[float, float] | None:
+             lo: int=50, hi: int=150) -> tuple[np.floating, np.floating] | None:
     """
     Calculate baseline between a specified range.
     Outliers are rejected using MAD criteria.
@@ -140,7 +140,7 @@ def baseline(y: np.ndarray, min_samples: int=1000,
     inliers = reject_outliers(y[thres], m=2)
     clean = y[thres][inliers]
     if len(clean) >= min_samples:
-        return float(np.median(clean)), float(np.std(clean))
+        return np.median(clean), np.std(clean)
     else:
         raise BadBaseline(f"#samples {len(clean)} < min samples {min_samples}")
 
@@ -368,22 +368,26 @@ def trim(t: np.ndarray, y: np.ndarray, *, left: int=0, right: int=1) -> Generato
 
 
 @partial
-def levels(t: np.ndarray, y: np.ndarray, *, n: int, tol: float=0,
+def levels(t: np.ndarray, y: np.ndarray, *, fit: None | GaussianMixture=None, n: int=0, tol: float=0,
            sortby: str='mean') -> Generator[tuple[Sequence, Sequence, Sequence] | None]:
     """
     Detect levels by fitting to a gaussian mixture model with n components.
     tol is a tolerance parameter between 0-1 that smoothens the prediction probabilities
     essentially smoothening out noise in the prediction to get long consecutive levels
+    Optionally provide a prefit model
     """
-
     # fit a guassian mixture
-    try:
-        fit_ = GaussianMixture(n_components=n).fit(y.reshape(-1, 1))
-    except ValueError:
-        yield [], [], []
-        return
+    if fit is None:
+        if n > 1:
+            raise StageError("n needs to be greater than 1")
+        try:
+            fit = GaussianMixture(n_components=n).fit(y.reshape(-1, 1))
+        except ValueError:
+            yield [], [], []
+            return
+
     # predict labels for each datapoint
-    pred = smooth_pred(y, fit_, tol)
+    pred = smooth_pred(y, fit, tol)
     # Get bounds between consecutive segments
     diff = np.diff(pred, append=0)
     bounds = np.arange(len(y))[(diff != 0)]
@@ -391,9 +395,9 @@ def levels(t: np.ndarray, y: np.ndarray, *, n: int, tol: float=0,
 
     # guassian label is pretty random, make pred labels match the sortkey
     if sortby == 'weight':
-        sort = np.argsort(-fit_.weights_)  # Sorting the negative weights sorts in reverse
+        sort = np.argsort(-fit.weights_)  # Sorting the negative weights sorts in reverse
     elif sortby == 'mean':
-        sort = np.argsort(fit_.means_[:, 0])
+        sort = np.argsort(fit.means_[:, 0])
     else:
         raise ValueError("sortby must be 'mean' or 'weight', not %s" % sortby)
     pred = sort[pred]

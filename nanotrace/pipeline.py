@@ -16,6 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import copy
 import logging
 from pathlib import Path
 from typing import Sequence, Callable
@@ -45,7 +46,7 @@ class Pipeline:
     """
 
     def __init__(self, *stages: Sequence[Callable], n_jobs: int=1,
-                 features: tuple | None=None, **kwargs) -> None:
+                 features: Sequence[Callable] | None=None, **kwargs) -> None:
         """
         A pipeline is constructed as a linear list of pipeline "stages".
 
@@ -56,7 +57,7 @@ class Pipeline:
         self._cache = {}
         logger.debug("Constructing pipeline with %d steps: %s", len(stages), ",".join([f.__name__ for f in stages]))
         self.stages = list(stages)
-        self.features = features if features is not None else []
+        self.features = [*features] if features is not None else []
         self.n_jobs = n_jobs
         self.kwargs = kwargs
 
@@ -75,12 +76,18 @@ class Pipeline:
         overwrite other settings such as n_jobs
         and other kwargs from the second pipe.
         """
-        self._cache = {} # reset cache
-        self.stages.extend(other.stages)
-        self.features.extend(other.features)
-        self.n_jobs = other.n_jobs
-        self.kwargs.update(other.kwargs)
-        return self
+        new = Pipeline(
+            *self.stages,
+            features=self.features,
+            n_jobs=self.n_jobs,
+            **self.kwargs
+        )
+        new.stages.extend(other.stages)
+        # Make sure features are not duplicated but order is kept.
+        new.features.extend(set(self.features).symmetric_difference(other.features))
+        new.n_jobs = other.n_jobs
+        new.kwargs.update(other.kwargs)
+        return new
 
     def __call__(self, source: ABFLike) -> segment.Root:
         """
