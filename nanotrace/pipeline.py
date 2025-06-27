@@ -76,10 +76,15 @@ class Pipeline:
         overwrite other settings such as n_jobs
         and other kwargs from the second pipe.
         """
-        new = copy.deepcopy(self)
-        new._cache = {} # reset cache
+        new = Pipeline(
+            *self.stages,
+            features=self.features,
+            n_jobs=self.n_jobs,
+            **self.kwargs
+        )
         new.stages.extend(other.stages)
-        new.features.extend(other.features)
+        # Make sure features are not duplicated but order is kept.
+        new.features.extend(set(self.features).symmetric_difference(other.features))
         new.n_jobs = other.n_jobs
         new.kwargs.update(other.kwargs)
         return new
