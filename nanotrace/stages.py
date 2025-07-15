@@ -239,7 +239,7 @@ def lower_cusum(y, *, mu: float = None, sigma: float = None,
 
 @partial
 def cusum(t: np.ndarray, y: np.ndarray, *, mu: float, sigma: float, padding: int=0,
-          omega: float, c: float) -> Generator[tuple[np.ndarray, np.ndarray]]:
+          omega: float, c: float, T: float) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Forward cusum to find start,
     reverse cusum to find end.
@@ -258,8 +258,8 @@ def cusum(t: np.ndarray, y: np.ndarray, *, mu: float, sigma: float, padding: int
     S = lower_cusum(y, mu=mu, sigma=sigma, omega=omega, c=c)
     # Reverse cusum to find ends
     Sr = lower_cusum(y[::-1], mu=mu, sigma=sigma, omega=omega, c=c)[::-1]
-    start = np.arange(len(y))[np.diff(S > c/2, append=0)==1]
-    end = np.arange(len(y))[np.diff(Sr > c/2, append=0)==-1]
+    start = np.arange(len(y))[np.diff(S > T, append=0)==1]
+    end = np.arange(len(y))[np.diff(Sr > T, append=0)==-1]
     for s,e in zip(start,end):
         s = max(0, s-padding)
         e = min(len(y)-1, e+padding)
