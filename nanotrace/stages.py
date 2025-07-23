@@ -260,14 +260,17 @@ def cusum(t: np.ndarray, y: np.ndarray, *, padding: int=0,
     :param c: optional ceiling to avoid runaway values
     :yield: event segments
     """
-    S = lower_cusum(y, mu=mu, sigma=sigma, omega=omega, c=c)
-    # Reverse cusum to find ends
-    Sr = lower_cusum(y[::-1], mu=mu, sigma=sigma, omega=omega, c=c)[::-1]
-    start = np.arange(len(y))[np.diff(S > T, append=0)==1]
-    end = np.arange(len(y))[np.diff(Sr > T, append=0)==-1]
-    for s,e in zip(start,end):
-        s = max(0, s-padding)
-        e = min(len(y)-1, e+padding)
+    Sf = lower_cusum(y, omega=omega, c=c)
+    Sr = lower_cusum(y[::-1], omega=omega, c=c)[::-1]
+    S = (Sf+Sr)/2
+    thres = np.diff(S>T,append=0)
+    starts = np.arange(len(y))[thres==1]
+    ends = np.arange(len(y))[thres==-1]
+
+    for s,e in zip(starts,ends):
+        l = e-s
+        s = max(0, s-l*padding)
+        e = min(len(y)-1, e+l*padding)
         yield t[s:e], y[s:e]
 
 
