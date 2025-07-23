@@ -8,17 +8,16 @@ def test_protein():
     """
     abf = ABF("test/test_protein.abf")
     fs = abf.sampleRate
-    bl, sd = baseline_from_sweeps(abf, lo=-160, hi=-100)
     pipe = Pipeline(
         volt(abf=abf, v=-100),
         lowpass(cutoff=10e3, abf=abf),
         trim(left=0.05 * fs),
-        as_ires(bl=bl),
-        cusum(mu=1, sigma=sd / bl, omega=200, c=1000),
+        as_ires(lo=-160, hi=-100),
+        cusum(omega=10, c=2, T=1),
         size(min=1e-4 * fs, max=1e-1 * fs),
         features=global_features,
         n_segments=10,
         n_jobs=4
     )
     features = pipe(abf).features
-    assert len(features) == 80
+    assert len(features) == 61
