@@ -307,8 +307,8 @@ def switch(t: np.ndarray, y: np.ndarray, threshold: float=0.8) -> Generator[tupl
     using a peak finding algorithm.
     :param threshold: fraction of extrema to consider for peak finding
     """
-    hi = np.max(y) * 0.8
-    lo = np.min(y) * 0.8
+    hi = np.max(y) * threshold
+    lo = np.min(y) * threshold
     his = find_peaks(y, height=hi)[0]
     los = find_peaks(-y, height=-lo)[0]
 
