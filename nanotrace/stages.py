@@ -428,7 +428,7 @@ def levels(t: np.ndarray, y: np.ndarray, *, fit: None | GaussianMixture=None, n:
     """
     # fit a guassian mixture
     if fit is None:
-        if n > 1:
+        if n <= 1:
             raise StageError("n needs to be greater than 1")
         try:
             fit = GaussianMixture(n_components=n).fit(y.reshape(-1, 1))
