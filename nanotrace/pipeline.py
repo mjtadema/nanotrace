@@ -46,7 +46,7 @@ class Pipeline:
     """
 
     def __init__(self, *stages: Sequence[Callable], n_jobs: int=1,
-                 features: Sequence[Callable] | None=None, **kwargs) -> None:
+                 features: Sequence[Callable] | None=None, debug: bool=False, **kwargs) -> None:
         """
         A pipeline is constructed as a linear list of pipeline "stages".
 
@@ -59,6 +59,7 @@ class Pipeline:
         self.stages = list(stages)
         self.features = [*features] if features is not None else []
         self.n_jobs = n_jobs
+        self.debug = debug
         self.kwargs = kwargs
 
     def __str__(self) -> str:
@@ -106,7 +107,7 @@ class Pipeline:
 
         if not key in self._cache:
             logger.debug("Creating tree from root: %s", key)
-            rt = root(source, self.stages, pipeline=self, features=self.features, **self.kwargs)
+            rt = root(source, self.stages, pipeline=self, features=self.features, debug=self.debug, **self.kwargs)
             # Absolute file path is used as a key for caching, could use file hash
             self._cache[key] = rt
         logger.debug("Returning cached tree")
