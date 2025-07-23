@@ -54,7 +54,7 @@ class Pipeline:
         :param kwargs: additional keyword arguments are passed to the root segment
         """
         # The pipeline instance caches the root segment with the abf file paths as keys
-        self._cache = {}
+        self._cache = {} # TODO maybe remove caching...
         logger.debug("Constructing pipeline with %d steps: %s", len(stages), ",".join([f.__name__ for f in stages]))
         self.stages = list(stages)
         self.features = [*features] if features is not None else []
