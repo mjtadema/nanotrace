@@ -212,8 +212,17 @@ def size(t: np.ndarray, y: np.ndarray, *, min: int=0, max: int=np.inf) -> Genera
 
 
 @njit  # jit compiled for speed
+def do_lower_cusum(Z, omega: float = 0, c: float = np.inf) -> np.ndarray:
+    # Pre-allocated numpy array for speed
+    S = np.empty(Z.shape)
+    S[0] = 0
+    for i, (s, z) in enumerate(zip(S[:-1], Z[1:])):
+        S[i + 1] = max(0, min(s - z - omega, c))
+    return S
+
+
 def lower_cusum(y, *, mu: float = None, sigma: float = None,
-                omega: float = 0, c: float = 9999) -> np.ndarray:
+                omega: float = 0, c: float = np.inf) -> np.ndarray:
     """
     Calculate the lower cusum value over time
 
@@ -225,20 +234,16 @@ def lower_cusum(y, *, mu: float = None, sigma: float = None,
     :return: array of cusum control values
     """
     if mu is None:
-        mu = np.mean(y)
+        mu = np.median(y)
     if sigma is None:
-        sigma = np.std(y)
-    Z = (y - mu) / sigma**2  # scaling
-    # Pre-allocated numpy array for speed
-    S = np.empty(Z.shape)
-    S[0] = 0
-    for i, (s, z) in enumerate(zip(S[:-1], Z[1:])):
-        S[i + 1] = max(0, min(s - z - omega, c))
-    return S
+        sigma = np.std(y[~outliers(y)])
+
+    Z = (y - mu) / sigma  # scaling
+    return do_lower_cusum(Z, omega=omega, c=c)
 
 
 @partial
-def cusum(t: np.ndarray, y: np.ndarray, *, mu: float, sigma: float, padding: int=0,
+def cusum(t: np.ndarray, y: np.ndarray, *, padding: int=0,
           omega: float, c: float, T: float) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Forward cusum to find start,
