@@ -41,7 +41,8 @@ def catch_errors(n=1) -> Callable:
         @wraps(f)
         def wrapper(*args, **kwargs) -> Any:
             try:
-                return f(*args, **kwargs)
+                with np.errstate(all='ignore'):
+                    return f(*args, **kwargs)
             except Exception as e:
                 logger.error(e)
                 if n > 1:
