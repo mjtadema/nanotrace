@@ -108,7 +108,7 @@ from .decorators import partial
 
 
 # Utilities
-def reject_outliers(data: np.ndarray, m: float=3.5) -> bool:
+def outliers(data: np.ndarray, m: float=2.) -> bool:
     """
     Reject outliers based on median absolute deviation (MAD).
     Inspired by stack overflow (https://stackoverflow.com/questions/11686720/is-there-a-numpy-builtin-to-reject-outliers-from-a-list)
@@ -120,7 +120,7 @@ def reject_outliers(data: np.ndarray, m: float=3.5) -> bool:
     d = np.abs(data - np.median(data))
     mdev = np.median(d)
     s = d/mdev if mdev else np.zeros(len(d))
-    return s<m
+    return s>m
 
 
 def baseline(y: np.ndarray, min_samples: int=1000,
@@ -137,7 +137,7 @@ def baseline(y: np.ndarray, min_samples: int=1000,
     :return: Baseline and standard deviation
     """
     thres = (lo < y) & (y < hi)
-    inliers = reject_outliers(y[thres], m=2)
+    inliers = ~outliers(y[thres], m=2)
     clean = y[thres][inliers]
     if len(clean) >= min_samples:
         return np.median(clean), np.std(clean)
