@@ -275,6 +275,16 @@ def cusum(t: np.ndarray, y: np.ndarray, *, padding: int=0,
 
 
 @partial
+def split(t,y,*,maxlen: float) -> Generator[tuple[np.ndarray, np.ndarray]]:
+    n_splits = len(t) // maxlen
+    if n_splits > 1:
+        for t_, y_ in zip(np.array_split(t, n_splits), np.array_split(y, n_splits)):
+            yield t_, y_
+    else:
+        yield t,y
+
+
+@partial
 def switch(t: np.ndarray, y: np.ndarray) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Segment a raw nanotrace based on manual voltage switch spikes
