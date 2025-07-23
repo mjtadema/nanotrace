@@ -132,17 +132,17 @@ def split(t, y, func, n) -> list[tuple[np.ndarray, np.ndarray]]:
     """Generate functions for split features"""
     return [func(ts, ys) for ts, ys in zip(np.array_split(t, n), np.array_split(y, n))]
 
-
+@catch_errors()
 def _min(t: np.ndarray, y: np.ndarray) -> floating[Any]:
     return np.min(y)
 
-
+@catch_errors()
 def _max(t: np.ndarray, y: np.ndarray) -> floating[Any]:
     return np.max(y)
 
 
 sequence_features = []
-for f in (median, mean, std, _min, _max, _skew):
+for f in (median, mean, std, _min, _max, skew):
     pf = ft.partial(split, func=f, n=8)
     pf.__name__ = f.__name__ + '_split'
     sequence_features.append(pf)
