@@ -277,6 +277,8 @@ class Segment(Node):
                 logger.info(f"Generating {self.n_segments}")
             try:
                 for i, (t, y, *l) in enumerate(self.stage(self.t, self.y)):
+                    if len(l) == 0 and self.l is not None:
+                        l = (self.l,) # if we already have a label, add it to the next stage
                     seg = Segment(t, y, l, stages=self.residual, name=self.stage.__name__)
                     seg.parent = self
                     if i == self.n_segments:
