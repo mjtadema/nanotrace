@@ -16,6 +16,7 @@ limitations under the License.
 """
 
 import logging
+import warnings
 from typing import Sequence, Callable
 
 import numpy as np
@@ -98,7 +99,7 @@ class Root(Node):
     Root takes care of calculating features over all events.
     """
     def __init__(self, *args, pipeline: pipeline.Pipeline, n_segments: int=-1,
-                 features: Sequence | None=None, post: Callable | None=None, **kwargs) -> None:
+                 features: Sequence | None=None, post: Callable | None=None, debug: bool=False, **kwargs) -> None:
         """
         Root constructor only sets up generic pipeline stuff.
         Specific roots that subclass this handle their specific tree setup.
@@ -119,6 +120,7 @@ class Root(Node):
             features = []
         self.extractors = features
         self.post = post
+        self.debug = debug
         self.n_segments = n_segments
 
     @property
@@ -277,12 +279,17 @@ class Segment(Node):
                 logger.info(f"Generating {self.n_segments}")
             try:
                 for i, (t, y, *l) in enumerate(self.stage(self.t, self.y)):
+                    if len(l) == 0 and self.l is not None:
+                        l = (self.l,) # if we already have a label, add it to the next stage
                     seg = Segment(t, y, l, stages=self.residual, name=self.stage.__name__)
                     seg.parent = self
                     if i == self.n_segments:
                         break
-            except StageError:
-                logger.warning("Stage %s failed"%self.stage.__name__)
+            except StageError as e:
+                if self.root.debug:
+                    raise e
+                else:
+                    warnings.warn("Stage %s failed"%self.stage.__name__)
 
     @Node.children.getter
     def children(self):

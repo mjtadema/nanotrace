@@ -132,17 +132,17 @@ def split(t, y, func, n) -> list[tuple[np.ndarray, np.ndarray]]:
     """Generate functions for split features"""
     return [func(ts, ys) for ts, ys in zip(np.array_split(t, n), np.array_split(y, n))]
 
-
+@catch_errors()
 def _min(t: np.ndarray, y: np.ndarray) -> floating[Any]:
     return np.min(y)
 
-
+@catch_errors()
 def _max(t: np.ndarray, y: np.ndarray) -> floating[Any]:
     return np.max(y)
 
 
 sequence_features = []
-for f in (median, mean, std, _min, _max, _skew):
+for f in (median, mean, std, _min, _max, skew):
     pf = ft.partial(split, func=f, n=8)
     pf.__name__ = f.__name__ + '_split'
     sequence_features.append(pf)
@@ -181,33 +181,35 @@ def gNDF(x: np.ndarray, A: float, x0: float, sigma: float, B: float, C: float) -
     return A*np.exp(E) + C
 
 
-@catch_errors(n=3)
-def peptide_fit(t: np.ndarray, y: np.ndarray) -> tuple[Any, Any, floating]:
+@catch_errors(n=4)
+def fit_gNDF(t: np.ndarray, y: np.ndarray):
     """
     Fit current data from y to the gNDF to characterize peptide blockage events
+    :return: tuple(mean current, log(dwell time), event standard deviation, shape parameter beta)
     """
     if len(y) > 5000:
         # Resample if y is too large
-        y,t = resample(y, num=5000, t=t)
-    # Estimate parameters
-    x0 = np.mean(t)
-    sigma = float(max(t)-min(t)) / 3
-    beta = -2.72
-    c = max(0,np.min(y)) # initial c must be >0
-    a = 1-c
+        y, t = resample(y, num=5000, t=t)
     # Fit gNDF (doi 10.1021/acsomega.2c00871)
+    x = np.linspace(0, 1, len(y))  # need to normalize x for a good fit
     popt, pcov, *_ = curve_fit(
-        gNDF, t, y,
-        maxfev=100, # Low limit of function evaluations, if the fit is not fast assume it's a bad fit
+        gNDF, x, y,
+        maxfev=100,  # Low limit of function evaluations, if the fit is not fast assume it's a bad fit
         bounds=(
-            [0, t.min(),     0, -np.inf, 0],  # low
-            [1, t.max(),     1,       0, 1]), # high
-        p0= [a,      x0, sigma,    beta, c]   # initial values
+            [0, 0, 0, -np.inf, 0],  # low
+            [1, 1, 1, -1, 1]),  # high
+        p0=[0.5, 0.5, 1 / 3, -2.72, 0.5]  # initial values
     )
+    # Convert back to real time
+    timespan = (t[-1] - t[0])
+
     a, x0, sigma, beta, c = popt
     # Calculate the dwelltime using the gamma function
-    dt = 2 * sigma * gamma((1 / beta) + 1)
+    dt = 2 * sigma * gamma((1 / beta) + 1) * timespan
+
+    x0 = t[0] + x0 * timespan
+
     # Return event characteristics mean block, log(dt) and sd
-    yfit = gNDF(t, *popt)
-    sd = np.std((y - yfit)[(x0-dt < t) & (t < x0+dt)])
-    return c, np.log(dt), sd
+    yfit = gNDF(x, *popt)
+    sd = np.std((y - yfit)[(x0 - dt < t) & (t < x0 + dt)])
+    return c, np.log(dt), sd, np.log(-beta)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Generator, Sequence
+import warnings
+from typing import Generator, Sequence, Literal
 
 from .learn import Predictor
 
@@ -108,7 +109,7 @@ from .decorators import partial
 
 
 # Utilities
-def reject_outliers(data: np.ndarray, m: float=3.5) -> bool:
+def outliers(data: np.ndarray, m: float=2.) -> bool:
     """
     Reject outliers based on median absolute deviation (MAD).
     Inspired by stack overflow (https://stackoverflow.com/questions/11686720/is-there-a-numpy-builtin-to-reject-outliers-from-a-list)
@@ -120,11 +121,11 @@ def reject_outliers(data: np.ndarray, m: float=3.5) -> bool:
     d = np.abs(data - np.median(data))
     mdev = np.median(d)
     s = d/mdev if mdev else np.zeros(len(d))
-    return s<m
+    return s>m
 
 
 def baseline(y: np.ndarray, min_samples: int=1000,
-             lo: int=50, hi: int=150) -> tuple[np.floating, np.floating] | None:
+             lo: float=50., hi: float=150.) -> tuple[np.floating, np.floating] | None:
     """
     Calculate baseline between a specified range.
     Outliers are rejected using MAD criteria.
@@ -137,7 +138,7 @@ def baseline(y: np.ndarray, min_samples: int=1000,
     :return: Baseline and standard deviation
     """
     thres = (lo < y) & (y < hi)
-    inliers = reject_outliers(y[thres], m=2)
+    inliers = ~outliers(y[thres], m=2)
     clean = y[thres][inliers]
     if len(clean) >= min_samples:
         return np.median(clean), np.std(clean)
@@ -206,29 +207,22 @@ def smooth_pred(y: np.ndarray, fit: Predictor, tol: float) -> np.ndarray:
 
 @partial
 def size(t: np.ndarray, y: np.ndarray, *, min: int=0, max: int=np.inf) -> Generator[tuple[np.ndarray, np.ndarray]]:
-    """Specify a minimum and maximum size for a segment"""
+    """
+    Specify a minimum and maximum size for a segment.
+    Effectively acts as a filter for segment size
+    """
     if min < len(t) < max:
         yield t,y
 
 
 @njit  # jit compiled for speed
-def lower_cusum(y, *, mu: float = None, sigma: float = None,
-                omega: float = 0, c: float = 9999) -> np.ndarray:
+def do_lower_cusum(Z, *, omega: float, c: float) -> np.ndarray:
     """
-    Calculate the lower cusum value over time
-
-    :param y: data
-    :param mu: target mean
-    :param sigma: target S.D.
-    :param omega: tunable critical level parameter
-    :param c: optional ceiling to avoid runaway values
-    :return: array of cusum control values
+    :param Z: standardized data with mean 0 and S.D. 1
+    :param omega: critical level parameter
+    :param c: ceiling for the cusum value, helps with dynamic range
+    :return: cusum values
     """
-    if mu is None:
-        mu = np.mean(y)
-    if sigma is None:
-        sigma = np.std(y)
-    Z = (y - mu) / sigma**2  # scaling
     # Pre-allocated numpy array for speed
     S = np.empty(Z.shape)
     S[0] = 0
@@ -237,9 +231,30 @@ def lower_cusum(y, *, mu: float = None, sigma: float = None,
     return S
 
 
+def lower_cusum(y, *, mu: float = None, sigma: float = None,
+                omega: float = 0, c: float = np.inf) -> np.ndarray:
+    """
+    Preprocess the data for calculating the lower cusum
+
+    :param y: data
+    :param mu: target mean
+    :param sigma: target S.D.
+    :param omega: tunable critical level parameter
+    :param c: optional ceiling to help with dynamic range
+    :return: array of cusum control values
+    """
+    if mu is None:
+        mu = np.median(y)
+    if sigma is None:
+        sigma = np.std(y[~outliers(y)])
+
+    Z = (y - mu) / sigma  # scaling
+    return do_lower_cusum(Z, omega=omega, c=c)
+
+
 @partial
-def cusum(t: np.ndarray, y: np.ndarray, *, mu: float, sigma: float, padding: int=0,
-          omega: float, c: float) -> Generator[tuple[np.ndarray, np.ndarray]]:
+def cusum(t: np.ndarray, y: np.ndarray, *, padding: int=0,
+          omega: float, c: float, T: float) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Forward cusum to find start,
     reverse cusum to find end.
@@ -250,29 +265,50 @@ def cusum(t: np.ndarray, y: np.ndarray, *, mu: float, sigma: float, padding: int
     :param y: data
     :param mu: target mean
     :param sigma: target S.D.
-    :param padding: pad indices this much
+    :param padding: pad the events by event length * padding
     :param omega: tunable critical level parameter
-    :param c: optional ceiling to avoid runaway values
+    :param c: optional ceiling to help with dynamic range
+    :param T: threshold
     :yield: event segments
     """
-    S = lower_cusum(y, mu=mu, sigma=sigma, omega=omega, c=c)
-    # Reverse cusum to find ends
-    Sr = lower_cusum(y[::-1], mu=mu, sigma=sigma, omega=omega, c=c)[::-1]
-    start = np.arange(len(y))[np.diff(S > c/2, append=0)==1]
-    end = np.arange(len(y))[np.diff(Sr > c/2, append=0)==-1]
-    for s,e in zip(start,end):
-        s = max(0, s-padding)
-        e = min(len(y)-1, e+padding)
+    Sf = lower_cusum(y, omega=omega, c=c)
+    Sr = lower_cusum(y[::-1], omega=omega, c=c)[::-1]
+    S = (Sf+Sr)/2
+    thres = np.diff(S>T,append=0)
+    starts = np.arange(len(y))[thres==1]
+    ends = np.arange(len(y))[thres==-1]
+
+    for s,e in zip(starts,ends):
+        l = e-s
+        s = max(0, s-l*padding)
+        e = min(len(y)-1, e+l*padding)
         yield t[s:e], y[s:e]
 
 
 @partial
-def switch(t: np.ndarray, y: np.ndarray) -> Generator[tuple[np.ndarray, np.ndarray]]:
+def split(t: np.ndarray,y: np.ndarray,*,
+          maxlen: int) -> Generator[tuple[np.ndarray, np.ndarray]]:
+    """
+    Split up segments for ease of processing
+    :param maxlen: maximum length of a segment
+    """
+    n_splits = len(t) // maxlen
+    if n_splits > 1:
+        for t_, y_ in zip(np.array_split(t, n_splits), np.array_split(y, n_splits)):
+            yield t_, y_
+    else:
+        yield t,y
+
+
+@partial
+def switch(t: np.ndarray, y: np.ndarray, threshold: float=0.8) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Segment a raw nanotrace based on manual voltage switch spikes
+    using a peak finding algorithm.
+    :param threshold: fraction of extrema to consider for peak finding
     """
-    hi = np.max(y) / 1.2
-    lo = np.min(y) / 1.2
+    hi = np.max(y) * threshold
+    lo = np.min(y) * threshold
     his = find_peaks(y, height=hi)[0]
     los = find_peaks(-y, height=-lo)[0]
 
@@ -302,18 +338,21 @@ def lowpass(t: np.ndarray, y: np.ndarray, *, cutoff: int,
 
 
 @partial
-def as_ires(t: np.ndarray, y: np.ndarray, bl: float | str='auto', **kwargs) -> Generator[tuple[np.ndarray, np.ndarray] | None]:
+def as_ires(t: np.ndarray, y: np.ndarray, bl: float | Literal["auto"]='auto', *,
+            lo: float=0., hi: float=200., **kwargs) -> Generator[tuple[np.ndarray, np.ndarray] | None]:
     """
     Calculate Ires, optionally using an automatic baseline calculation
 
     :param t: time
     :param y: data
     :param bl: pre calculated baseline or "auto"
+    :parma lo: low bound to consider for baseline calculation
+    :param hi: high bound to consider for baseline calculation
     """
     if isinstance(bl, str):
         assert bl == 'auto', "Only 'auto' is accepted as string"
         try:
-            bl, _ = baseline(y, **kwargs)
+            bl, _ = baseline(y, lo=lo, hi=hi, **kwargs)
         except BadBaseline as e:
             raise StageError("Could not automatically calculate baseline") from e
     yield t, y / bl
@@ -322,6 +361,10 @@ def as_ires(t: np.ndarray, y: np.ndarray, bl: float | str='auto', **kwargs) -> G
 @partial
 @wraps(as_ires)
 def as_iex(t,y, **kwargs):
+    """
+    Wrapper for as_ires to calculate Iex instead.
+    """
+    warnings.warn("At this moment all other stages are written with Ires in mind, take this into consideration.")
     yield t, 1-next(as_ires(**kwargs)(t,y))[1]
 
 
@@ -329,6 +372,7 @@ def as_iex(t,y, **kwargs):
 def threshold(t: np.ndarray, y: np.ndarray, *, lo: float=0,
               hi: float, tol: float=0) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
+    Threshold search.
     Segment into consecutive pieces between lo and hi
 
     :param t: time
@@ -353,7 +397,8 @@ def threshold(t: np.ndarray, y: np.ndarray, *, lo: float=0,
 
 
 @partial
-def trim(t: np.ndarray, y: np.ndarray, *, left: int=0, right: int=1) -> Generator[tuple[np.ndarray, np.ndarray]]:
+def trim(t: np.ndarray, y: np.ndarray, *, left: int=0,
+         right: int=1) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Trim off part of the segment
 
@@ -369,16 +414,21 @@ def trim(t: np.ndarray, y: np.ndarray, *, left: int=0, right: int=1) -> Generato
 
 @partial
 def levels(t: np.ndarray, y: np.ndarray, *, fit: None | GaussianMixture=None, n: int=0, tol: float=0,
-           sortby: str='mean') -> Generator[tuple[Sequence, Sequence, Sequence] | None]:
+           sortby: Literal["mean","weight"]='mean') -> Generator[tuple[Sequence, Sequence, Sequence] | None]:
     """
     Detect levels by fitting to a gaussian mixture model with n components.
     tol is a tolerance parameter between 0-1 that smoothens the prediction probabilities
     essentially smoothening out noise in the prediction to get long consecutive levels
     Optionally provide a prefit model
+
+    :param fit: prefitted gaussian mixture model
+    :param n: number of components to fit
+    :param tol: tolerance parameter
+    :param sortby: sort levels based on mean or weight
     """
     # fit a guassian mixture
     if fit is None:
-        if n > 1:
+        if n <= 1:
             raise StageError("n needs to be greater than 1")
         try:
             fit = GaussianMixture(n_components=n).fit(y.reshape(-1, 1))
