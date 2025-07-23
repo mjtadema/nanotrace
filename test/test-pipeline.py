@@ -2,7 +2,7 @@ from nanotrace import Pipeline, ABF
 from nanotrace.stages import volt, baseline_from_sweeps, as_ires, lowpass, cusum, size, trim
 from nanotrace.features import global_features, sequence_features
 
-def test_pipeline():
+def test_protein():
     """
     Data taken from: https://doi.org/10.5281/zenodo.8123395
     """
