@@ -11,7 +11,7 @@ Features can be defined as a set of callables that compute a feature metric from
 For parallelization, [joblib](https://github.com/joblib/joblib) is used to support a variety of multiprocessing/threading backends for feature extraction.
 
 ## Graphical abstract
-![graphical abstract](https://github.com/mjtadema/nanotrace/blob/master/figures/abstract.png)
+![graphical abstract](https://github.com/mjtadema/nanotrace/blob/master/figures/abstract.png?raw=true)
 
 ## Table of contents
 This guide covers the following topics:
@@ -71,29 +71,30 @@ Available stages can be listed by running `help(pipeline.stages)` or `?pipeline.
 
 ### Single output segment
 
-| Syntax                              | Description                                                                                                                                                                                                                                           |
-|-------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `lowpass(cutoff, fs, order=10)`     | Apply a lowpass filter with `cutoff` as the cutoff frequency in Hz, `fs` as the sampling rate and `order` as the order of the filter. The sampling rate can be extracted from an abf file using `ABF().SampleRate`                                    |
-| `as_ires(lo, hi, min_samples=1000)` | Calculate the _residual current_ (Ires) from the baseline. Automatically detects the baseline based on a binning approach. `min_samples` determines how many samples a bin needs to be considered a proper level and not just a fast current "spike". |
-| `as_iex(lo, hi, min_samples=1000)`  | Same as `as_ires` but calculate _excluded current_ (Iex).                                                                                                                                                                                             
-| `trim(left=0, right=1)`             | Trim off this many samples from the `left` or the `right` side.  If the sampling rate was assigned to a variable named `fs`, you can use this to calculate how many _seconds_ to trim off each side using `nseconds * fs`.                            |
+| Syntax                              | Description                                                                                                                                                                                                                                                                                    |
+|-------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `lowpass(cutoff, abf, order=10)`    | Apply a lowpass filter with `cutoff` as the cutoff frequency in Hz, `abf` as the abf file to use as a reference (for sampling rate etc.) and `order` as the order of the filter (unlikely to need to be changed). |
+| `as_ires(lo, hi, min_samples=1000)` | Calculate the _residual current_ (Ires) from the baseline. Automatically detects the baseline based on a binning approach. `min_samples` determines how many samples a bin needs to be considered a proper level and not just a fast current "spike".                                          |
+| `as_iex(lo, hi, min_samples=1000)`  | Same as `as_ires` but calculate _excluded current_ (Iex). **NOTE:** all other stages are written with Ires in mind for now so take that into consideration.                                                                                                                                                                                                                                      
+| `trim(left=0, right=1)`             | Trim off this many samples from the `left` or the `right` side.  If the sampling rate was assigned to a variable named `fs`, you can use this to calculate how many _seconds_ to trim off each side using `nseconds * fs`.                                                                     |
 
 ### Multiple output segments
 
 | Syntax                                       | Description                                                                                                                                                                                                                                                                                                                                                                                                           |
 |----------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `switch()`                                   | Segment a gapfree trace based on large, short, current spikes cause by manual voltage switching.                                                                                                                                                                                                                                                                                                                      |
-| `threshold(lo, hi)`                          | Segment an input segment by consecutive stretches of current between `lo` and `hi`.                                                                                                                                                                                                                                                                                                                                   |
+| `switch(threshold=0.8)`                      | Segment a gapfree trace based on large, short, current spikes caused by manual voltage switching using a peak finding algorithm. `threshold` is the fraction of the extrema to consider when finding peaks                                                                                                                                                                                                            |
+| `threshold(lo, hi, tol=0)`                   | Segment an input segment by consecutive stretches of current between `lo` and `hi`. `tol` is a tolerance parameter to tolerate small excursions outside of the threshold (should be a small value like 0.001 - 0.01).                                                                                                                                                                                                 |
 | `levels(n, tol=0, sortby='mean')`            | Detect sublevels by fitting a [gaussian mixture model](https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html). Use `n` to set the number of gaussians to fit, `tol` is a number between 0 and 1 and controls how much short spikes are tolerated. `sortby` controls how the gaussians are labeled, can be sorted by "mean" or by "weight" (weight being the height of the gaussian). |
 | `volt(abf, v)`                               | Select part of a sweep where the control voltage in `abf` matches the target voltage `v`                                                                                                                                                                                                                                                                                                                              |
-| `by_tag(abf, pattern)`                       | Segment a trace into smaller pieces based on matches with `pattern`. `pattern` can be any regex pattern.
-| `cusum(mu, sigma, omega, c, padding: int=0)` | Event detection using CUSUM method. `mu` is the target mean, `sigma` is the standard deviation around the mean, `omega` is the tunable critical level parameter, `c` is the ceiling for the CUSUM control value.
+| `by_tag(abf, pattern)`                       | Segment a trace into smaller pieces based on matches with `pattern`. `pattern` can be any regex pattern.                                                                                                                                                                                                                                                                                                              
+| `cusum(mu, sigma, omega, c, padding: int=0)` | Event detection using CUSUM method. `mu` is the target mean, `sigma` is the standard deviation around the mean, `omega` is the tunable critical level parameter, `c` is the ceiling for the CUSUM control value.                                                                                                                                                                                                      
 ### Decorators
 [Decorators](https://peps.python.org/pep-0318/) are functions that wrap around other functions with a convenient syntax. I use them to _enhance_ the "default" behavior of the stages and they live in `porepipe.decorators`. The following decorators are predefined:
 
 | Name                                | Description                                                                                                                                                                                                                                                                                                                   |
 |------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `partial`                          | Essentially functions as [functools.partial](https://docs.python.org/3/library/functools.html) but in a decorator form for convenience. Allows pre-defining some arguments when the decorated function is called. I use it to set keyword arguments and only leave _positional arguments_ to be filled when the stage is run. |
+| `catch_errors(n=1)` | Used for feature calculation. Catches errors and simply returns the specified number of NaN values to not interrupt the feature calculation. |
 
 
 ### Defining a custom stage
@@ -149,22 +150,23 @@ The main advantage of using a `Tree` datastructure is that every segment generat
 ```python
 from nanotrace import *
 
-abf = ABF("../test/test_blood.abf")
+abf = ABF("some_abf_file.abf")
 fs = abf.sampleRate
 
 pipe = Pipeline(
     volt(abf.sweepC, 20),
-    lowpass(cutoff_fq=10e3, fs=fs),
+    lowpass(cutoff=10e3, abf=abf),
     trim(left=0.01*fs),
     as_ires(),
-    threshold(lo=0.0, hi=0.8, cutoff=1e-3*fs),
+    threshold(lo=0.0, hi=0.8),
+    size(min=1e-3*fs),
     features=(mean, ldt),
     n_segments=10,
     n_jobs=4
 )
 pipe(abf).by_name['as_ires'][0].inspect()
 ```
-![inspect example output](https://github.com/mjtadema/nanotrace/blob/master/figures/inspect.png)
+![inspect example output](https://github.com/mjtadema/nanotrace/blob/master/figures/inspect.png?raw=true)
 
 ## Feature extraction
 After segmenting a trace and detecting events, features can be extracted. This generally means that a single event gets reduced to several characteristic quantities that we call _features_, such as the mean current value (using `mean`) or the dwell-time (using `dt`), among other features. Below is a working `Pipeline` definition with feature extraction to extract the mean current and the dwelltime from the events resulting from the `Pipeline`.
@@ -178,22 +180,23 @@ It takes two column names and plots them as a scatter plot where the markers are
 ```python
 from nanotrace import *
 
-abf = ABF("../test/test_blood.abf")
+abf = ABF("some_abf_file.abf")
 fs = abf.sampleRate
 
 pipe = Pipeline(
     volt(abf.sweepC, 20),
-    lowpass(cutoff_fq=10e3, fs=fs),
+    lowpass(cutoff=10e3, abf=abf),
     trim(left=0.01*fs),
     as_ires(),
-    threshold(lo=0.0, hi=0.8, cutoff=1e-3*fs),
+    threshold(lo=0.0, hi=0.8),
+    size(min=1e-3*fs),
     features=(mean, ldt),
     n_segments=10,
     n_jobs=4
 )
 pipe(abf).features.plot('mean','ldt','scatter')
 ```
-![features example output](https://github.com/mjtadema/nanotrace/blob/master/figures/features.png)
+![features example output](https://github.com/mjtadema/nanotrace/blob/master/figures/features.png?raw=true)
 
 
 ## Compound pipes
@@ -203,12 +206,12 @@ Pipelines can be added together using the `|` operator (in unix terms also known
 ```python
 from nanotrace import *
 
-abf = ABF("../test/test_blood.abf")
+abf = ABF("some_abf_file.abf")
 fs = abf.sampleRate
 
 first = Pipeline(
     volt(abf.sweepC, 20),
-    lowpass(cutoff_fq=10e3, fs=fs),
+    lowpass(cutoff=10e3, abf=abf),
     trim(left=0.01*fs),
     as_ires(),
 )
@@ -217,7 +220,8 @@ first = Pipeline(
 # and use this for the second pipe definition
 
 second = Pipeline(
-    threshold(lo=0.0, hi=0.8, cutoff=1e-3*fs),
+    threshold(lo=0.0, hi=0.8),
+    size(min=1e-3*fs),
     features=(mean, ldt),
     n_segments=10,
     n_jobs=4
