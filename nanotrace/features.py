@@ -181,8 +181,8 @@ def gNDF(x: np.ndarray, A: float, x0: float, sigma: float, B: float, C: float) -
     return A*np.exp(E) + C
 
 
-@catch_errors(n=3)
-def peptide_fit(t: np.ndarray, y: np.ndarray) -> tuple[Any, Any, floating]:
+@catch_errors(n=4)
+def peptide_fit(t: np.ndarray, y: np.ndarray):
     """
     Fit current data from y to the gNDF to characterize peptide blockage events
     """
@@ -210,6 +210,6 @@ def peptide_fit(t: np.ndarray, y: np.ndarray) -> tuple[Any, Any, floating]:
     x0 = t[0] + x0 * timespan
 
     # Return event characteristics mean block, log(dt) and sd
-    yfit = gNDF(t, *popt)
-    sd = np.std((y - yfit)[(x0-dt < t) & (t < x0+dt)])
-    return c, np.log(dt), sd
+    yfit = gNDF(x, *popt)
+    sd = np.std((y - yfit)[(x0 - dt < t) & (t < x0 + dt)])
+    return c, np.log(dt), sd, np.log(-beta)
