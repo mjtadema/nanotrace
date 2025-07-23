@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Generator, Sequence
+from typing import Generator, Sequence, Literal
 
 from .learn import Predictor
 
@@ -302,7 +302,8 @@ def lowpass(t: np.ndarray, y: np.ndarray, *, cutoff: int,
 
 
 @partial
-def as_ires(t: np.ndarray, y: np.ndarray, bl: float | str='auto', **kwargs) -> Generator[tuple[np.ndarray, np.ndarray] | None]:
+def as_ires(t: np.ndarray, y: np.ndarray, bl: float | Literal["auto"]='auto', *,
+            lo: int, hi: int, **kwargs) -> Generator[tuple[np.ndarray, np.ndarray] | None]:
     """
     Calculate Ires, optionally using an automatic baseline calculation
 
@@ -313,7 +314,7 @@ def as_ires(t: np.ndarray, y: np.ndarray, bl: float | str='auto', **kwargs) -> G
     if isinstance(bl, str):
         assert bl == 'auto', "Only 'auto' is accepted as string"
         try:
-            bl, _ = baseline(y, **kwargs)
+            bl, _ = baseline(y, lo=lo, hi=hi, **kwargs)
         except BadBaseline as e:
             raise StageError("Could not automatically calculate baseline") from e
     yield t, y / bl
