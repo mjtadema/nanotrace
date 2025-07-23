@@ -192,15 +192,14 @@ def fit_gNDF(t: np.ndarray, y: np.ndarray):
         y, t = resample(y, num=5000, t=t)
     # Fit gNDF (doi 10.1021/acsomega.2c00871)
     x = np.linspace(0, 1, len(y))  # need to normalize x for a good fit
-    with np.errstate(divide='ignore', over='ignore'):  # ignore divide by zero errors
-        popt, pcov, *_ = curve_fit(
-            gNDF, x, y,
-            maxfev=100,  # Low limit of function evaluations, if the fit is not fast assume it's a bad fit
-            bounds=(
-                [0, 0, 0, -np.inf, 0],  # low
-                [1, 1, 1, -1, 1]),  # high
-            p0=[0.5, 0.5, 1 / 3, -2.72, 0.5]  # initial values
-        )
+    popt, pcov, *_ = curve_fit(
+        gNDF, x, y,
+        maxfev=100,  # Low limit of function evaluations, if the fit is not fast assume it's a bad fit
+        bounds=(
+            [0, 0, 0, -np.inf, 0],  # low
+            [1, 1, 1, -1, 1]),  # high
+        p0=[0.5, 0.5, 1 / 3, -2.72, 0.5]  # initial values
+    )
     # Convert back to real time
     timespan = (t[-1] - t[0])
 
