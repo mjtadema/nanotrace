@@ -182,9 +182,10 @@ def gNDF(x: np.ndarray, A: float, x0: float, sigma: float, B: float, C: float) -
 
 
 @catch_errors(n=4)
-def peptide_fit(t: np.ndarray, y: np.ndarray):
+def fit_gNDF(t: np.ndarray, y: np.ndarray):
     """
     Fit current data from y to the gNDF to characterize peptide blockage events
+    :return: tuple(mean current, log(dwell time), event standard deviation, shape parameter beta)
     """
     if len(y) > 5000:
         # Resample if y is too large
