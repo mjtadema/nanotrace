@@ -339,7 +339,7 @@ def lowpass(t: np.ndarray, y: np.ndarray, *, cutoff: int,
 
 @partial
 def as_ires(t: np.ndarray, y: np.ndarray, bl: float | Literal["auto"]='auto', *,
-            lo: float, hi: float, **kwargs) -> Generator[tuple[np.ndarray, np.ndarray] | None]:
+            lo: float=0., hi: float=200., **kwargs) -> Generator[tuple[np.ndarray, np.ndarray] | None]:
     """
     Calculate Ires, optionally using an automatic baseline calculation
 
