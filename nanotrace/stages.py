@@ -546,8 +546,7 @@ def normalisation(t,y, *, BaselineLow, BaselineHigh, AsIex = True):
         yield t, 1 - ResidualCurrent
 
 @partial
-def resample(t: np.ndarray, y: np.ndarray, *, fs, TimeRes)
-            -> Generator[tuple[np.ndarray, np.ndarray]]:
+def resample(t: np.ndarray, y: np.ndarray, *, fs, TimeRes) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Resample your data
     :param t: time
