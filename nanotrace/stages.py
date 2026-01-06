@@ -525,3 +525,20 @@ def normalisation(t,y, *, BaselineLow, BaselineHigh, AsIex = True):
         yield t, ResidualCurrent
     else:
         yield t, 1 - ResidualCurrent
+
+@partial
+def resample(t: np.ndarray, y: np.ndarray, *, fs, TimeRes)
+            -> Generator[tuple[np.ndarray, np.ndarray]]:
+    """
+    Resample your data
+    :param t: time
+    :param y: data
+    :param fs: sampling frequency
+    :param TimeRes: desired amount of points/s
+    """
+    ResamplingFactor = fs / TimeRes
+    if ResamplingFactor <= 1:
+        print("Warning: Your new time resolution should be smaller than the current one!")
+    ResampledLength = int(len(t)/ResamplingFactor)
+    downsampling = signal.resample(y, ResampledLength, t)
+    yield downsampling[1], downsampling[0]
