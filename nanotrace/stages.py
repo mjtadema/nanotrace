@@ -101,6 +101,7 @@ import numpy as np
 from pyabf import ABF
 from scipy import signal
 from scipy.signal import find_peaks, fftconvolve
+from scipy.signal import bessel, filtfilt
 from sklearn.mixture import GaussianMixture
 from numba import njit
 
@@ -320,7 +321,7 @@ def switch(t: np.ndarray, y: np.ndarray, threshold: float=0.8) -> Generator[tupl
 
 
 @partial
-def lowpass(t: np.ndarray, y: np.ndarray, *, cutoff: int,
+def lowpass_butterworth(t: np.ndarray, y: np.ndarray, *, cutoff: int,
             abf: ABF, order: int=10) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
     Wrap a lowpass butterworth filter
@@ -335,6 +336,24 @@ def lowpass(t: np.ndarray, y: np.ndarray, *, cutoff: int,
     filt = signal.sosfilt(sos, y)
     assert len(filt) == len(t)
     yield t, filt
+
+@partial
+def lowpass_bessel(t: np.ndarray, y: np.ndarray,*, cutoff: int, 
+                  abf: ABF, order:int=5) -> Generator[tuple[np.ndarray, np.ndarray]]:
+    """
+    Wrap a lowpass bessel filter
+    :param t: time
+    :param y: data
+    :param cutoff: cutoff frequency (Hz)
+    :param abf: ABF object
+    :param order: filter order (default: 5)
+    :yield: filtered data
+    """
+    Wn = cutoff / (abf.sampleRate / 2)
+    b, a = bessel(order, Wn, btype='low', analog=False)
+    FilteredData = filtfilt(b, a, y)
+    assert len(filt) == len(t)
+    yield t, FilteredData
 
 
 @partial
