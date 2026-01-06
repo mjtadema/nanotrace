@@ -352,7 +352,7 @@ def lowpass_bessel(t: np.ndarray, y: np.ndarray,*, cutoff: int,
     Wn = cutoff / (abf.sampleRate / 2)
     b, a = bessel(order, Wn, btype='low', analog=False)
     FilteredData = filtfilt(b, a, y)
-    assert len(filt) == len(t)
+    assert len(FilteredData) == len(t)
     yield t, FilteredData
 
 
