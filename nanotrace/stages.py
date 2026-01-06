@@ -507,3 +507,21 @@ def by_tag(t: np.ndarray, y: np.ndarray, *, abf: ABF,
     for s, e in zip(i[start], i[end]):
         yield t[s:e], y[s:e]
 
+@partial
+def normalisation(t,y, *, BaselineLow, BaselineHigh, AsIex = True):
+    """
+    Normalises the data normalised between 0-1, 
+    where 1 is a fully closed pore.
+    :param t: time
+    :param y: data
+    :param baseline_low: The lower limit to normalise between
+    :param baseline_low: The upper limit to normalise between
+    :param AsIex: Returns data as excluded current, otherwise as residual current
+    :return: tuple(time,current)
+    """
+    ShiftedCurrent = y-BaselineHigh
+    ResidualCurrent = ShiftedCurrent / (BaselineLow-BaselineHigh)
+    if AsIex == False:
+        yield t, ResidualCurrent
+    else:
+        yield t, 1 - ResidualCurrent
